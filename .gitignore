@@ -44,4 +44,14 @@ out/
 Thumbs.db
 
 ### Spring Boot application properties files ###
-application.properties
+**/application.properties
+
+/src/main/resources/eternal-petal-455604-d6-eba6d6441ac0.json
+/src/main/java/com/okagaka/OkaGaka/domain/tmap/service/TmapServiceTest.java
+/src/main/java/com/okagaka/OkaGaka/common/external/tmap/RouteTestService.java
+/src/main/java/com.okagaka.OkaGaka.common.external.tmap.test.TmapRouteMatrixServiceTest.java
+/src/main/java/com.okagaka.OkaGaka.common.external.tmap.TmapMatrixTestRunner.java
+/src/main/java/com.okagaka.OkaGaka.common.external.tmap.TmapRouteClient.java
+/src/main/java/com.okagaka.OkaGaka.common.external.tmap.TransitTestRunner.java
+/src/main/java/com.okagaka.OkaGaka.domain.reservation.service.ReservationService2.java
+/src/main/java/com.okagaka.OkaGaka.domain.stt.SpeechToTextTest.java

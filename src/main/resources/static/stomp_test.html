@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>WebSocket Location Test</title>
+    <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          max-width: 900px;
+          margin: 2rem auto;
+          padding: 1rem;
+          background: #fafafa;
+          color: #333;
+        }
+        h2 {
+          text-align: center;
+          margin-bottom: 1.5rem;
+        }
+        .btn-group {
+          display: flex;
+          justify-content: center;
+          gap: 0.8rem;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+        }
+        button {
+          padding: 0.6rem 1.2rem;
+          font-size: 1rem;
+          border: none;
+          border-radius: 6px;
+          background-color: #2c7be5;
+          color: white;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+          user-select: none;
+        }
+        button:hover {
+          background-color: #1a5fcc;
+        }
+        .input-group {
+          text-align: center;
+          margin-bottom: 1rem;
+        }
+        .input-group label {
+          margin-right: 5px;
+        }
+        .input-group input[type="text"],
+        .input-group input[type="number"] {
+          padding: 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        }
+        #jwtTokenInput {
+          width: 70%;
+        }
+        #groupIdInput, #userIdInput {
+          width: 100px;
+        }
+        #log {
+          background: #f0f0f0;
+          padding: 1rem;
+          height: 220px;
+          overflow-y: auto;
+          border-radius: 6px;
+          font-family: monospace;
+          white-space: pre-wrap;
+          box-shadow: inset 0 0 5px #ccc;
+        }
+    </style>
+</head>
+<body>
+<h2>📡 위치 실시간 전송 테스트</h2>
+
+<div class="btn-group">
+    <button type="button" onclick="connect()">1️⃣ 연결</button>
+    <button type="button" onclick="subscribe()">2️⃣ 구독</button>
+    <button type="button" onclick="sendLocation()">3️⃣ 위치 전송</button>
+    <button type="button" onclick="disconnect()">❌ 연결 종료</button>
+</div>
+
+<div class="input-group">
+    <label for="jwtTokenInput">JWT 토큰:</label>
+    <input type="text" id="jwtTokenInput" placeholder="로그인 후 발급받은 JWT 토큰">
+</div>
+
+<div class="input-group">
+    <label for="groupIdInput">그룹 ID:</label>
+    <input type="number" id="groupIdInput" value="33" placeholder="그룹 ID">
+    <label for="userIdInput">사용자 ID:</label>
+    <input type="number" id="userIdInput" value="38" placeholder="사용자 ID">
+</div>
+
+<pre id="log"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script>
+    let stompClient = null;
+    const logArea = document.getElementById('log');
+    const jwtTokenInput = document.getElementById('jwtTokenInput');
+    const groupIdInput = document.getElementById('groupIdInput');
+    const userIdInput = document.getElementById('userIdInput');
+
+    // 로그 출력 함수
+    function log(message) {
+      logArea.textContent += message + '\n';
+      logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    // WebSocket 연결
+    function connect() {
+      if (stompClient && stompClient.connected) {
+        return log('이미 연결되어 있습니다.');
+      }
+
+      // ** 순수 WebSocket 사용 **
+      const socket = new WebSocket('ws://localhost:8080/ws-location');
+      stompClient = Stomp.over(socket);
+
+      // STOMP 디버그 로그 활성화 (선택 사항)
+      // stompClient.debug = function(str) {
+      //   console.log("STOMP Debug:", str);
+      // };
+
+      const jwtToken = jwtTokenInput.value;
+      if (!jwtToken) {
+          return log('⚠️ JWT 토큰을 입력해주세요!');
+      }
+
+      const headers = {
+          'Authorization': 'Bearer ' + jwtToken // 'Authorization' 헤더에 'Bearer ' 접두사와 함께 토큰 추가
+      };
+
+      stompClient.connect(headers, () => { // 구성된 헤더 객체를 전달
+        log('✅ 연결됨!');
+      }, error => {
+        log('❌ 연결 실패: ' + error);
+        console.error("STOMP Connection Error:", error); // 상세 에러를 콘솔에도 출력
+        // 에러 객체에 더 상세한 정보가 있을 수 있으므로 확인
+        if (error.headers && error.headers.message) {
+            log('서버 응답 메시지: ' + error.headers.message);
+        }
+      });
+    }
+
+    // 구독 시작
+    function subscribe() {
+      if (!stompClient || !stompClient.connected) {
+        return log('먼저 연결하세요.');
+      }
+
+      const groupId = groupIdInput.value; // 입력 필드에서 값 가져오기
+      if (!groupId) {
+          return log('⚠️ 구독할 그룹 ID를 입력해주세요!');
+      }
+
+      stompClient.subscribe(`/topic/group/${groupId}`, message => {
+        log(`📥 수신: ${message.body}`);
+      });
+
+      log(`📡 구독됨: /topic/group/${groupId}`);
+    }
+
+    // 위치 정보 전송
+    function sendLocation() {
+      if (!stompClient || !stompClient.connected) {
+        return log('먼저 연결하세요.');
+      }
+
+      const groupId = groupIdInput.value; // 입력 필드에서 값 가져오기
+      const userId = userIdInput.value;   // 입력 필드에서 값 가져오기
+
+      if (!groupId || !userId) {
+          return log('⚠️ 그룹 ID와 사용자 ID를 입력해주세요!');
+      }
+
+      const payload = {
+        groupId: parseInt(groupId), // 숫자로 변환
+        userId: parseInt(userId),   // 숫자로 변환
+        latitude: 37.12345,
+        longitude: 127.12345,
+      };
+
+      stompClient.send('/app/location/update', {}, JSON.stringify(payload));
+      log(`📤 전송됨: ${JSON.stringify(payload)}`);
+    }
+
+    // 연결 종료
+    function disconnect() {
+      if (stompClient) {
+        stompClient.disconnect(() => log('🚪 연결 종료됨'));
+      }
+    }
+</script>
+</body>
+</html>
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="ko">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8" />-->
+<!--    <title>WebSocket Location Test</title>-->
+<!--    <style>-->
+<!--        body {-->
+<!--          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;-->
+<!--          max-width: 900px;-->
+<!--          margin: 2rem auto;-->
+<!--          padding: 1rem;-->
+<!--          background: #fafafa;-->
+<!--          color: #333;-->
+<!--        }-->
+<!--        h2 {-->
+<!--          text-align: center;-->
+<!--          margin-bottom: 1.5rem;-->
+<!--        }-->
+<!--        .btn-group {-->
+<!--          display: flex;-->
+<!--          justify-content: center;-->
+<!--          gap: 0.8rem;-->
+<!--          margin-bottom: 1rem;-->
+<!--          flex-wrap: wrap;-->
+<!--        }-->
+<!--        button {-->
+<!--          padding: 0.6rem 1.2rem;-->
+<!--          font-size: 1rem;-->
+<!--          border: none;-->
+<!--          border-radius: 6px;-->
+<!--          background-color: #2c7be5;-->
+<!--          color: white;-->
+<!--          cursor: pointer;-->
+<!--          transition: background-color 0.2s ease;-->
+<!--          user-select: none;-->
+<!--        }-->
+<!--        button:hover {-->
+<!--          background-color: #1a5fcc;-->
+<!--        }-->
+<!--        #log {-->
+<!--          background: #f0f0f0;-->
+<!--          padding: 1rem;-->
+<!--          height: 220px;-->
+<!--          overflow-y: auto;-->
+<!--          border-radius: 6px;-->
+<!--          font-family: monospace;-->
+<!--          white-space: pre-wrap;-->
+<!--          box-shadow: inset 0 0 5px #ccc;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<h2>📡 위치 실시간 전송 테스트</h2>-->
+
+<!--<div class="btn-group">-->
+<!--    <button type="button" onclick="connect()">1️⃣ 연결</button>-->
+<!--    <button type="button" onclick="subscribe()">2️⃣ 구독</button>-->
+<!--    <button type="button" onclick="sendLocation()">3️⃣ 위치 전송</button>-->
+<!--    <button type="button" onclick="disconnect()">❌ 연결 종료</button>-->
+<!--</div>-->
+
+<!--<div style="text-align: center; margin-bottom: 1rem;">-->
+<!--    <label for="jwtTokenInput">JWT 토큰:</label>-->
+<!--    <input type="text" id="jwtTokenInput" style="width: 70%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"-->
+<!--           placeholder="여기에 로그인 후 발급받은 JWT 토큰을 붙여넣으세요.">-->
+<!--</div>-->
+
+<!--<pre id="log"></pre>-->
+
+<!--<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>-->
+
+<!--<script>-->
+<!--    let stompClient = null;-->
+<!--    const logArea = document.getElementById('log');-->
+<!--    const jwtTokenInput = document.getElementById('jwtTokenInput');-->
+
+<!--    function log(message) {-->
+<!--      logArea.textContent += message + '\n';-->
+<!--      logArea.scrollTop = logArea.scrollHeight;-->
+<!--    }-->
+
+<!--    // WebSocket 연결 (순수 WebSocket 사용)-->
+<!--    function connect() {-->
+<!--      if (stompClient && stompClient.connected) {-->
+<!--        return log('이미 연결되어 있습니다.');-->
+<!--      }-->
+
+<!--      // ** ws:// 프로토콜 사용 **-->
+<!--      const socket = new WebSocket('ws://localhost:8080/ws-location');-->
+<!--      stompClient = Stomp.over(socket);-->
+
+<!--      // STOMP 디버그 로그 활성화 (선택 사항, 개발 시 유용)-->
+<!--      // stompClient.debug = function(str) {-->
+<!--      //   console.log("STOMP Debug:", str);-->
+<!--      // };-->
+
+<!--      const jwtToken = jwtTokenInput.value;-->
+<!--      if (!jwtToken) {-->
+<!--          return log('⚠️ JWT 토큰을 입력해주세요!');-->
+<!--      }-->
+
+<!--      const headers = {-->
+<!--          'Authorization': 'Bearer ' + jwtToken-->
+<!--      };-->
+
+<!--      stompClient.connect(headers, () => {-->
+<!--        log('✅ 연결됨!');-->
+<!--      }, error => {-->
+<!--        log('❌ 연결 실패: ' + error);-->
+<!--        console.error("STOMP Connection Error:", error);-->
+<!--        // 에러 객체에 더 상세한 정보가 있을 수 있으므로 확인-->
+<!--        if (error.headers && error.headers.message) {-->
+<!--            log('서버 응답 메시지: ' + error.headers.message);-->
+<!--        }-->
+<!--      });-->
+<!--    }-->
+
+<!--    // 구독 시작-->
+<!--    function subscribe() {-->
+<!--      if (!stompClient || !stompClient.connected) {-->
+<!--        return log('먼저 연결하세요.');-->
+<!--      }-->
+
+<!--      const groupId = 33; // 실제 테스트할 그룹 ID로 변경하세요.-->
+<!--      stompClient.subscribe(`/topic/group/${groupId}`, message => {-->
+<!--        log(`📥 수신: ${message.body}`);-->
+<!--      });-->
+
+<!--      log(`📡 구독됨: /topic/group/${groupId}`);-->
+<!--    }-->
+
+<!--    // 위치 정보 전송-->
+<!--    function sendLocation() {-->
+<!--      if (!stompClient || !stompClient.connected) {-->
+<!--        return log('먼저 연결하세요.');-->
+<!--      }-->
+
+<!--      const payload = {-->
+<!--        groupId: 33, // 실제 테스트할 그룹 ID로 변경하세요.-->
+<!--        userId: 38, // 실제 테스트할 사용자 ID로 변경하세요.-->
+<!--        latitude: 37.12345,-->
+<!--        longitude: 127.12345,-->
+<!--      };-->
+
+<!--      stompClient.send('/app/location/update', {}, JSON.stringify(payload));-->
+<!--      log(`📤 전송됨: ${JSON.stringify(payload)}`);-->
+<!--    }-->
+
+<!--    // 연결 종료-->
+<!--    function disconnect() {-->
+<!--      if (stompClient) {-->
+<!--        stompClient.disconnect(() => log('🚪 연결 종료됨'));-->
+<!--      }-->
+<!--    }-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="ko">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8" />-->
+<!--    <title>WebSocket Location Test</title>-->
+<!--    <style>-->
+<!--        /* ... (기존 스타일 코드) ... */-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<h2>📡 위치 실시간 전송 테스트</h2>-->
+
+<!--<div class="btn-group">-->
+<!--    <button type="button" onclick="connect()">1️⃣ 연결</button>-->
+<!--    <button type="button" onclick="subscribe()">2️⃣ 구독</button>-->
+<!--    <button type="button" onclick="sendLocation()">3️⃣ 위치 전송</button>-->
+<!--    <button type="button" onclick="disconnect()">❌ 연결 종료</button>-->
+<!--</div>-->
+
+<!--<div style="text-align: center; margin-bottom: 1rem;">-->
+<!--    <label for="jwtTokenInput">JWT 토큰:</label>-->
+<!--    <input type="text" id="jwtTokenInput" style="width: 70%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"-->
+<!--           placeholder="여기에 로그인 후 발급받은 JWT 토큰을 붙여넣으세요.">-->
+<!--</div>-->
+
+<!--<pre id="log"></pre>-->
+
+<!--<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>-->
+<!--<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>-->
+
+<!--<script>-->
+<!--    let stompClient = null;-->
+<!--    const logArea = document.getElementById('log');-->
+<!--    const jwtTokenInput = document.getElementById('jwtTokenInput'); // 새로 추가된 입력 필드-->
+
+<!--    // 로그 출력 함수-->
+<!--    function log(message) {-->
+<!--      logArea.textContent += message + '\n';-->
+<!--      logArea.scrollTop = logArea.scrollHeight;-->
+<!--    }-->
+
+<!--    // WebSocket 연결-->
+<!--    function connect() {-->
+<!--      if (stompClient && stompClient.connected) {-->
+<!--        return log('이미 연결되어 있습니다.');-->
+<!--      }-->
+
+<!--      const socket = new SockJS('http://localhost:8080/ws-location'); // ws:// 대신 http://로 시작-->
+<!--      stompClient = Stomp.over(socket);-->
+
+<!--      // JWT 토큰 가져오기-->
+<!--      const jwtToken = jwtTokenInput.value;-->
+<!--      if (!jwtToken) {-->
+<!--          return log('⚠️ JWT 토큰을 입력해주세요!');-->
+<!--      }-->
+
+<!--      // STOMP 연결 헤더 구성-->
+<!--      const headers = {-->
+<!--          'Authorization': 'Bearer ' + jwtToken // 'Authorization' 헤더에 'Bearer ' 접두사와 함께 토큰 추가-->
+<!--      };-->
+
+<!--      stompClient.connect(headers, () => { // 구성된 헤더 객체를 전달-->
+<!--        log('✅ 연결됨!');-->
+<!--      }, error => {-->
+<!--        log('❌ 연결 실패: ' + error);-->
+<!--        console.error("STOMP Connection Error:", error); // 상세 에러를 콘솔에도 출력-->
+<!--      });-->
+<!--    }-->
+
+<!--    // ... (subscribe, sendLocation, disconnect 함수는 동일) ...-->
+
+<!--    // 구독 시작-->
+<!--    function subscribe() {-->
+<!--      if (!stompClient || !stompClient.connected) {-->
+<!--        return log('먼저 연결하세요.');-->
+<!--      }-->
+
+<!--      const groupId = 33; // 실제 테스트할 그룹 ID로 변경하세요.-->
+<!--      stompClient.subscribe(`/topic/group/${groupId}`, message => {-->
+<!--        log(`📥 수신: ${message.body}`);-->
+<!--      });-->
+
+<!--      log(`📡 구독됨: /topic/group/${groupId}`);-->
+<!--    }-->
+
+<!--    // 위치 정보 전송-->
+<!--    function sendLocation() {-->
+<!--      if (!stompClient || !stompClient.connected) {-->
+<!--        return log('먼저 연결하세요.');-->
+<!--      }-->
+
+<!--      const payload = {-->
+<!--        groupId: 33, // 실제 테스트할 그룹 ID로 변경하세요.-->
+<!--        userId: 38, // 실제 테스트할 사용자 ID로 변경하세요.-->
+<!--        latitude: 37.12345,-->
+<!--        longitude: 127.12345,-->
+<!--      };-->
+
+<!--      stompClient.send('/app/location/update', {}, JSON.stringify(payload));-->
+<!--      log(`📤 전송됨: ${JSON.stringify(payload)}`);-->
+<!--    }-->
+
+<!--    // 연결 종료-->
+<!--    function disconnect() {-->
+<!--      if (stompClient) {-->
+<!--        stompClient.disconnect(() => log('🚪 연결 종료됨'));-->
+<!--      }-->
+<!--    }-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
+<!--<!DOCTYPE html>-->
+<!--<html lang="ko">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8" />-->
+<!--    <title>WebSocket Location Test</title>-->
+<!--    <style>-->
+<!--        body {-->
+<!--          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;-->
+<!--          max-width: 900px;-->
+<!--          margin: 2rem auto;-->
+<!--          padding: 1rem;-->
+<!--          background: #fafafa;-->
+<!--          color: #333;-->
+<!--        }-->
+<!--        h2 {-->
+<!--          text-align: center;-->
+<!--          margin-bottom: 1.5rem;-->
+<!--        }-->
+<!--        .btn-group {-->
+<!--          display: flex;-->
+<!--          justify-content: center;-->
+<!--          gap: 0.8rem;-->
+<!--          margin-bottom: 1rem;-->
+<!--          flex-wrap: wrap;-->
+<!--        }-->
+<!--        button {-->
+<!--          padding: 0.6rem 1.2rem;-->
+<!--          font-size: 1rem;-->
+<!--          border: none;-->
+<!--          border-radius: 6px;-->
+<!--          background-color: #2c7be5;-->
+<!--          color: white;-->
+<!--          cursor: pointer;-->
+<!--          transition: background-color 0.2s ease;-->
+<!--          user-select: none;-->
+<!--        }-->
+<!--        button:hover {-->
+<!--          background-color: #1a5fcc;-->
+<!--        }-->
+<!--        #log {-->
+<!--          background: #f0f0f0;-->
+<!--          padding: 1rem;-->
+<!--          height: 220px;-->
+<!--          overflow-y: auto;-->
+<!--          border-radius: 6px;-->
+<!--          font-family: monospace;-->
+<!--          white-space: pre-wrap;-->
+<!--          box-shadow: inset 0 0 5px #ccc;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<h2>📡 위치 실시간 전송 테스트</h2>-->
+
+<!--<div class="btn-group">-->
+<!--    <button type="button" onclick="connect()">1️⃣ 연결</button>-->
+<!--    <button type="button" onclick="subscribe()">2️⃣ 구독</button>-->
+<!--    <button type="button" onclick="sendLocation()">3️⃣ 위치 전송</button>-->
+<!--    <button type="button" onclick="disconnect()">❌ 연결 종료</button>-->
+<!--</div>-->
+
+<!--<pre id="log"></pre>-->
+
+<!--&lt;!&ndash; SockJS & STOMP &ndash;&gt;-->
+<!--<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>-->
+<!--<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>-->
+
+<!--<script>-->
+<!--    let stompClient = null;-->
+<!--    const logArea = document.getElementById('log');-->
+
+<!--    // 로그 출력 함수-->
+<!--    function log(message) {-->
+<!--      logArea.textContent += message + '\n';-->
+<!--      logArea.scrollTop = logArea.scrollHeight;-->
+<!--    }-->
+
+<!--    // WebSocket 연결-->
+<!--    function connect() {-->
+<!--      if (stompClient && stompClient.connected) {-->
+<!--        return log('이미 연결되어 있습니다.');-->
+<!--      }-->
+
+<!--      const socket = new WebSocket('ws://localhost:8080/ws-location');-->
+<!--      stompClient = Stomp.over(socket);-->
+
+<!--      stompClient.connect({}, () => {-->
+<!--        log('✅ 연결됨!');-->
+<!--      }, error => {-->
+<!--        log('❌ 연결 실패: ' + error);-->
+<!--      });-->
+<!--    }-->
+
+<!--    // 구독 시작-->
+<!--    function subscribe() {-->
+<!--      if (!stompClient || !stompClient.connected) {-->
+<!--        return log('먼저 연결하세요.');-->
+<!--      }-->
+
+<!--      const groupId = 33;-->
+<!--      stompClient.subscribe(`/topic/group/${groupId}`, message => {-->
+<!--        log(`📥 수신: ${message.body}`);-->
+<!--      });-->
+
+<!--      log(`📡 구독됨: /topic/group/${groupId}`);-->
+<!--    }-->
+
+<!--    // 위치 정보 전송-->
+<!--    function sendLocation() {-->
+<!--      if (!stompClient || !stompClient.connected) {-->
+<!--        return log('먼저 연결하세요.');-->
+<!--      }-->
+
+<!--      const payload = {-->
+<!--        groupId: 33,-->
+<!--        userId: 38,-->
+<!--        latitude: 37.12345,-->
+<!--        longitude: 127.12345,-->
+<!--      };-->
+
+<!--      stompClient.send('/app/location/update', {}, JSON.stringify(payload));-->
+<!--      log(`📤 전송됨: ${JSON.stringify(payload)}`);-->
+<!--    }-->
+
+<!--    // 연결 종료-->
+<!--    function disconnect() {-->
+<!--      if (stompClient) {-->
+<!--        stompClient.disconnect(() => log('🚪 연결 종료됨'));-->
+<!--      }-->
+<!--    }-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->

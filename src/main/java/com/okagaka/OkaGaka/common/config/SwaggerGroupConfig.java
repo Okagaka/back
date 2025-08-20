@@ -10,7 +10,7 @@ public class SwaggerGroupConfig {
     @Bean
     public GroupedOpenApi userApi() {
         return GroupedOpenApi.builder()
-                .group("User API")
+                .group("user-api")
                 .pathsToMatch("/api/users/**")
                 .build();
     }
@@ -18,7 +18,7 @@ public class SwaggerGroupConfig {
     @Bean
     public GroupedOpenApi adminApi() {
         return GroupedOpenApi.builder()
-                .group("FamilyGroup API")
+                .group("familygroup-api")
                 .pathsToMatch("/api/familygroup/**")
                 .build();
     }
