@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_ROOT="/home/ec2-user/apps/spring-practice"
+PROJECT_ROOT="/home/ubuntu/apps/spring-practice"
 JAR_FILE="$PROJECT_ROOT/spring-webapp.jar"
 
 DEPLOY_LOG="$PROJECT_ROOT/deploy.log"
