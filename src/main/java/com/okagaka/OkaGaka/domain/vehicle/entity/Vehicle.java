@@ -20,12 +20,15 @@ public class Vehicle extends BaseTimeEntity{
     @Column(length = 50, nullable = false)
     private String model;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
-    private VehicleStatus status;
+    private VehicleStatus status = VehicleStatus.Idle;
 
-    @Column(nullable = false)
-    private String location;
+    // 나중에 false로 바꾸기(자율주행차 위치 받아오는 로직 짠 뒤에)
+    @Builder.Default
+    @Column
+    private String location = "none";
 
     @Builder.Default
     @Column(name = "battery_level", nullable = false)

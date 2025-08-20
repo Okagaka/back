@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface ZoneRepository extends JpaRepository<Zone, Long> {
 
-    List<Zone> findByFamilyId(Integer familyId);
+//    List<Zone> findByFamilyId(Integer familyId);
 }

@@ -23,6 +23,12 @@ public class ApiResponse<T> {
         this.data = data;
     }
 
+    public ApiResponse(int status, String message, T data) {
+        this.status = status;
+        this.message = message;
+        this.data = data;
+    }
+
     public static <T> ApiResponse<T> success(T data) {
         return new ApiResponse<>(SuccessCode.SUCCESS, data);
     }
@@ -30,6 +36,19 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(ErrorCode code) {
         return new ApiResponse<>(code, null);
     }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(400, message, null); // 보통 400 Bad Request
+    }
+
+    public static <T> ApiResponse<T> error(ErrorCode code, String message) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.status = code.getStatus();
+        response.message = message;
+        response.data = null;
+        return response;
+    }
+
 
     public static <T> ApiResponse<T> error(ErrorCode code, T data) {
         return new ApiResponse<>(code, data);

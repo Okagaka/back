@@ -14,6 +14,21 @@ public enum ErrorCode {
     GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "그룹을 찾을 수 없습니다."),
     GROUP_PASSWORD_INVALID(HttpStatus.FORBIDDEN, "그룹 비밀번호가 일치하지 않습니다."),
 
+    IMAGE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "이미지 4개 업로드해야 합니다."),
+    SIGNUP_TEMP_NOT_FOUND(HttpStatus.NOT_FOUND, "임시 데이터가 존재하지 않습니다."),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다."),
+
+    CARPOOL_MAXIMUM_EXCEEDED(HttpStatus.BAD_REQUEST, "최대 카풀 인원(4명)을 초과하였습니다."),
+    CARPOOL_NOT_POSSIBLE(HttpStatus.CONFLICT, "해당 시간에는 이미 예약이 있으며, 카풀 조건이 맞지 않아 예약이 불가능합니다."),
+    CARPOOL_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "카풀 가능 인원(3명)을 초과하였습니다."),
+//    CARPOOL_NOT_POSSIBLE_WITH_EXISTING("기존 예약 그룹과 카풀이 불가능합니다."),
+
+    TMAP_GUIDE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "길 안내 예측에 실패했습니다."),
+    DEPARTURE_TIME_NOT_FOUND(HttpStatus.BAD_REQUEST, "departureTime 값을 찾을 수 없습니다."),
+
+
+
+
 //    MEMORY_CREATE_FAILED(HttpStatus.BAD_REQUEST, "게시글 생성에 실패했습니다."),
 //    MEMORY_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
 
