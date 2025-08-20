@@ -7,7 +7,7 @@ os: linux
 ## overwrite: 복사할 위치에 파일이 있는 경우 대체
 files:
   - source: /
-    destination: /home/ec2-user/apps/okagaka-server
+    destination: /home/ubuntu/apps/okagaka-server
     overwrite: yes
 
 # files 섹션에서 복사한 파일에 대한 권한 설정
@@ -18,8 +18,8 @@ files:
 permissions:
   - object: /
     pattern: "**"
-    owner: ec2-user
-    group: ec2-user
+    owner: ubuntu
+    group: ubuntu
 
 # 배포 이후에 실행할 일련의 라이프사이클
 # 파일을 설치한 후 `AfterInstall` 에서 기존에 실행중이던 애플리케이션을 종료
@@ -31,8 +31,8 @@ hooks:
   AfterInstall:
     - location: scripts/stop.sh
       timeout: 60
-      runas: ec2-user
+      runas: ubuntu
   ApplicationStart:
     - location: scripts/start.sh
       timeout: 60
-      runas: ec2-user
+      runas: ubuntu
