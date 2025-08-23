@@ -26,6 +26,7 @@ echo "$TIME_NOW > 배포할 JAR 파일: $JAR_FILE" >> "$DEPLOY_LOG"
 #nohup java -jar "$JAR_FILE" > "$PROJECT_ROOT/nohup.out" 2>&1 &
 #sleep 3
 
+export $(cat /home/ubuntu/apps/okagaka-server/.env | xargs)
 
 # DB, AWS, 기타 환경 변수 전달
 nohup java \
