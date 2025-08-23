@@ -18,10 +18,18 @@ import org.springframework.security.config.http.SessionCreationPolicy; // 세션
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // 비밀번호 암호화 시 필요
 import org.springframework.security.crypto.password.PasswordEncoder; // 비밀번호 암호화 시 필요
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.beans.factory.annotation.Value;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Value("${FRONTEND_ORIGIN}")
+    private String frontendOrigin;
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
@@ -134,8 +142,26 @@ public class SecurityConfig {
 //    }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                frontendOrigin
+        )); // 프론트 주소
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true); // 인증 필요한 경우 true
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
+
+
 
 }

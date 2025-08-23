@@ -3,8 +3,6 @@ name: Spring Boot & Gradle CI/CD
 on:
   push:
     branches: [ "develop" ]
-#  pull_request:
-#    branches: [ "develop" ]
 
 env:
   AWS_REGION: ap-northeast-2

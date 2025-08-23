@@ -3,10 +3,7 @@
 # =============================
 # 환경 설정
 # =============================
-#PROJECT_ROOT="/home/ubuntu/apps/spring-practice"
-#JAR_FILE="$PROJECT_ROOT/spring-webapp.jar"
 PROJECT_ROOT="/home/ubuntu/apps/okagaka-server"
-#JAR_FILE="$PROJECT_ROOT/build/libs/okagaka-server-0.0.1-SNAPSHOT.jar"
 DEPLOY_LOG="$PROJECT_ROOT/deploy.log"
 
 # 디렉터리와 로그 파일 생성
@@ -18,8 +15,6 @@ TIME_NOW=$(date +%c)
 # =============================
 # 현재 구동 중인 애플리케이션 pid 확인
 # =============================
-#CURRENT_PID=$(pgrep -f "$JAR_FILE")
-#CURRENT_PID=$(pgrep -f "$PROJECT_ROOT/build/libs/.*\.jar")
 
 # build/libs 안에서 가장 최신 jar 선택
 JAR_FILE=$(ls -t $PROJECT_ROOT/build/libs/*.jar | head -n 1)
@@ -43,23 +38,3 @@ else
   done
 fi
 
-
-##!/usr/bin/env bash
-#
-#PROJECT_ROOT="/home/ubuntu/apps/spring-practice"
-#JAR_FILE="$PROJECT_ROOT/spring-webapp.jar"
-#
-#DEPLOY_LOG="$PROJECT_ROOT/deploy.log"
-#
-#TIME_NOW=$(date +%c)
-#
-## 현재 구동 중인 애플리케이션 pid 확인
-#CURRENT_PID=$(pgrep -f $JAR_FILE)
-#
-## 프로세스가 켜져 있으면 종료
-#if [ -z $CURRENT_PID ]; then
-#  echo "$TIME_NOW > 현재 실행중인 애플리케이션이 없습니다" >> $DEPLOY_LOG
-#else
-#  echo "$TIME_NOW > 실행중인 $CURRENT_PID 애플리케이션 종료 " >> $DEPLOY_LOG
-#  kill -15 $CURRENT_PID
-#fi
