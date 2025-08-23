@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import java.util.List;
 
 @Configuration
@@ -56,7 +57,8 @@ public class SecurityConfig {
 
                 // 요청에 대한 인가 (Authorization) 규칙 설정
                 .authorizeHttpRequests(authorize -> authorize
-                       // 로그인 없이 접근을 허용할 경로
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // 로그인 없이 접근을 허용할 경로
                         .requestMatchers(
                                 "/",
                                 "/stomp_test.html",
