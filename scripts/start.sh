@@ -23,8 +23,27 @@ JAR_FILE=$(ls -t $PROJECT_ROOT/build/libs/*.jar | head -n 1)
 # =============================
 #echo "$TIME_NOW > 애플리케이션 시작" >> "$DEPLOY_LOG"
 echo "$TIME_NOW > 배포할 JAR 파일: $JAR_FILE" >> "$DEPLOY_LOG"
-nohup java -jar "$JAR_FILE" > "$PROJECT_ROOT/nohup.out" 2>&1 &
-sleep 3
+#nohup java -jar "$JAR_FILE" > "$PROJECT_ROOT/nohup.out" 2>&1 &
+#sleep 3
+
+
+# DB, AWS, 기타 환경 변수 전달
+nohup java \
+  -DRDS_HOST=$RDS_HOST \
+  -DRDS_PORT=$RDS_PORT \
+  -DRDS_NAME=$RDS_NAME \
+  -DRDS_USER=$RDS_USER \
+  -DRDS_PASSWORD=$RDS_PASSWORD \
+  -DAWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  -DAWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+  -DS3_BUCKET=$S3_BUCKET \
+  -DTMAP_KEY=$TMAP_KEY \
+  -DJWT_SECRET=$JWT_SECRET \
+  -DJWT_EXPIRATION=$JWT_EXPIRATION \
+  -DGOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS \
+  -jar "$JAR_FILE" > "$PROJECT_ROOT/nohup.out" 2>&1 &
+
+sleep 5
 
 NEW_PID=$(pgrep -f "$JAR_FILE")
 if [ -z "$NEW_PID" ]; then

@@ -19,7 +19,13 @@ TIME_NOW=$(date +%c)
 # 현재 구동 중인 애플리케이션 pid 확인
 # =============================
 #CURRENT_PID=$(pgrep -f "$JAR_FILE")
-CURRENT_PID=$(pgrep -f "$PROJECT_ROOT/build/libs/.*\.jar")
+#CURRENT_PID=$(pgrep -f "$PROJECT_ROOT/build/libs/.*\.jar")
+
+# build/libs 안에서 가장 최신 jar 선택
+JAR_FILE=$(ls -t $PROJECT_ROOT/build/libs/*.jar | head -n 1)
+
+# 현재 실행 중인 PID 확인
+CURRENT_PID=$(pgrep -f "$JAR_FILE")
 
 if [ -z "$CURRENT_PID" ]; then
   echo "$TIME_NOW > 현재 실행 중인 애플리케이션이 없습니다" >> "$DEPLOY_LOG"
