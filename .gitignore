@@ -44,7 +44,7 @@ out/
 Thumbs.db
 
 ### Spring Boot application properties files ###
-**/application.properties
+#**/application.properties
 
 /src/main/resources/eternal-petal-455604-d6-eba6d6441ac0.json
 
