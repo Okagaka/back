@@ -99,13 +99,27 @@ public class SignupService {
         // 1. SignupTemp 조회
         SignupTemp signup = getSignupTemp(tempId);
         if (signup == null) {
+            System.out.println("[ERROR] tempId에 해당하는 SignupTemp를 찾을 수 없습니다. tempId=" + tempId);
             throw new RuntimeException("tempId에 해당하는 SignupTemp를 찾을 수 없습니다. tempId=" + tempId);
         }
+        System.out.println("[DEBUG] SignupTemp 조회 완료: " + signup);
+
 
         // 2. 주소 -> 좌표 변환
-        Coordinate coordinate = tmapGeocodingClient.getCoordinates(
-                request.getCityDo(), request.getGuGun(), request.getDong(), request.getBunji()
-        );
+//        Coordinate coordinate = tmapGeocodingClient.getCoordinates(
+//                request.getCityDo(), request.getGuGun(), request.getDong(), request.getBunji()
+//        );
+        Coordinate coordinate;
+        try {
+            coordinate = tmapGeocodingClient.getCoordinates(
+                    request.getCityDo(), request.getGuGun(), request.getDong(), request.getBunji()
+            );
+            System.out.println("[DEBUG] 좌표 변환 완료: lat=" + coordinate.getLat() + ", lon=" + coordinate.getLon());
+        } catch (Exception e) {
+            System.out.println("[ERROR] 좌표 변환 중 예외 발생: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("좌표 API 호출 실패", e);
+        }
 
         // 3. 좌표 null 체크
         if (coordinate == null
@@ -113,6 +127,7 @@ public class SignupService {
                 || coordinate.getLat().isEmpty()
                 || coordinate.getLon() == null
                 || coordinate.getLon().isEmpty()) {
+            System.out.println("[ERROR] 좌표 변환 결과가 유효하지 않음");
             throw new RuntimeException("좌표 변환 실패: " + request.getCityDo() + " " + request.getGuGun() + " " + request.getDong() + " " + request.getBunji());
         }
 
@@ -121,7 +136,10 @@ public class SignupService {
         try {
             latitude = Double.parseDouble(coordinate.getLat());
             longitude = Double.parseDouble(coordinate.getLon());
+            System.out.println("[DEBUG] 좌표 파싱 완료: latitude=" + latitude + ", longitude=" + longitude);
         } catch (NumberFormatException e) {
+            System.out.println("[ERROR] 좌표 파싱 실패: lat=" + coordinate.getLat() + ", lon=" + coordinate.getLon());
+            e.printStackTrace();
             throw new RuntimeException("좌표 파싱 실패: lat=" + coordinate.getLat() + ", lon=" + coordinate.getLon(), e);
         }
 
