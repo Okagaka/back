@@ -30,9 +30,12 @@ public class SignupTemp {
     private List<String> faceImages;
 
     // 임시 영역 (Zone) 정보 저장
-    @OneToMany(mappedBy = "signupTemp", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
+//    @OneToMany(mappedBy = "signupTemp", cascade = CascadeType.ALL, orphanRemoval = true)
+//    @Builder.Default
+//    private List<TempZone> tempZones = new ArrayList<>();
+    @OneToMany(mappedBy = "signupTemp", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<TempZone> tempZones = new ArrayList<>();
+
 
     private String vehicleModel;
     private String address;

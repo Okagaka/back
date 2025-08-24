@@ -92,6 +92,10 @@ public class SignupService {
 
     @Transactional
     public ZoneResponse saveZone(Long tempId, ZoneRequest request) {
+
+        System.out.println("[DEBUG] saveZone 시작: tempId=" + tempId + ", name=" + request.getName());
+
+
         // 1. SignupTemp 조회
         SignupTemp signup = getSignupTemp(tempId);
         if (signup == null) {
