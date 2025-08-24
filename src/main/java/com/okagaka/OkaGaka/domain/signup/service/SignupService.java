@@ -92,27 +92,56 @@ public class SignupService {
 
     @Transactional
     public ZoneResponse saveZone(Long tempId, ZoneRequest request) {
+        // 1. SignupTemp 조회
         SignupTemp signup = getSignupTemp(tempId);
+        if (signup == null) {
+            throw new RuntimeException("tempId에 해당하는 SignupTemp를 찾을 수 없습니다. tempId=" + tempId);
+        }
 
-        // 주소 -> 좌표 변환
+        // 2. 주소 -> 좌표 변환
         Coordinate coordinate = tmapGeocodingClient.getCoordinates(
                 request.getCityDo(), request.getGuGun(), request.getDong(), request.getBunji()
         );
 
+        // 3. 좌표 null 체크
+        if (coordinate == null
+                || coordinate.getLat() == null
+                || coordinate.getLat().isEmpty()
+                || coordinate.getLon() == null
+                || coordinate.getLon().isEmpty()) {
+            throw new RuntimeException("좌표 변환 실패: " + request.getCityDo() + " " + request.getGuGun() + " " + request.getDong() + " " + request.getBunji());
+        }
+
+        double latitude;
+        double longitude;
+        try {
+            latitude = Double.parseDouble(coordinate.getLat());
+            longitude = Double.parseDouble(coordinate.getLon());
+        } catch (NumberFormatException e) {
+            throw new RuntimeException("좌표 파싱 실패: lat=" + coordinate.getLat() + ", lon=" + coordinate.getLon(), e);
+        }
+
+        // 4. TempZone 객체 생성
         TempZone tempZone = TempZone.builder()
                 .name(request.getName())
-                .latitude(Double.parseDouble(coordinate.getLat()))
-                .longitude(Double.parseDouble(coordinate.getLon()))
+                .latitude(latitude)
+                .longitude(longitude)
                 .signupTemp(signup)
                 .build();
 
-        signup.getTempZones().add(tempZone);
-        signupTempRepository.save(signup);
+        System.out.println("[DEBUG] 생성된 TempZone: " + tempZone);
 
+        // 5. SignupTemp에 추가 후 저장
+        signup.getTempZones().add(tempZone);
+        SignupTemp savedSignup = signupTempRepository.save(signup);
+
+        System.out.println("[DEBUG] SignupTemp 저장 완료, tempZones 수: " + savedSignup.getTempZones().size());
+
+        // 6. 응답 반환
         return new ZoneResponse(
                 request.getName(),
-                Double.parseDouble(coordinate.getLat()),
-                Double.parseDouble(coordinate.getLon())
+                latitude,
+                longitude
         );
     }
 
