@@ -27,7 +27,9 @@ public class TmapGeocodingClient {
                 .queryParam("bunji", bunji)
                 .queryParam("addressFlag", "F00")
                 .queryParam("coordType", "WGS84GEO")
-                .build().toString();
+                .encode()
+                .toUriString();
+//                .build().toString();
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Accept", "application/json");
