@@ -38,166 +38,170 @@ public class ReservationService {
     private final CarpoolProposalRepository carpoolProposalRepository;
     private final TmapGeocodingClient tmapGeocodingClient;
 
-    public ReservationResponse createReservation(ReservationRequest request) {
+    public ReservationResponse createReservation(Long userId, ReservationRequest request) {
+        try {
 
-        // 1. 사용자 조회
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        FamilyGroup familyGroup = user.getFamilyGroup();
+            System.out.println("===== 예약 생성 시작 =====");
+            System.out.println("userId: " + userId);
+            System.out.println("request: " + request);
 
-        // 2. 출발 시간 estimateTravelTime계산 (도착 시간 - 예상 소요 시간)
-        Coordinate DepartureCoord = tmapGeocodingClient.getCoordinates(
-                request.getDepartureCityDo(),
-                request.getDepartureGuGun(),
-                request.getDepartureDong(),
-                request.getDepartureBunji()
-        );
+            // 1. 사용자 조회
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            System.out.println("사용자 조회 완료: " + user.getName());
+            FamilyGroup familyGroup = user.getFamilyGroup();
+            System.out.println("FamilyGroup 조회 완료: " + (familyGroup != null ? familyGroup.getId() : "없음"));
 
-        Coordinate destinationCoord = tmapGeocodingClient.getCoordinates(
-                request.getDestinationCityDo(),
-                request.getDestinationGuGun(),
-                request.getDestinationDong(),
-                request.getDestinationBunji()
-        );
-
-//        LocalDateTime calculatedDepartureTime = tmapService.calculateDepartureTime(DepartureCoord, destinationCoord, request.getArrivalTime(), request.getDate());
-////        LocalTime calculatedDepartureTime = request.getArrivalTime().minusMinutes(estimatedMinutes);
-//
-//        LocalDateTime departureDateTime;
-//        if (calculatedDepartureTime.isAfter(request.getArrivalTime())) {
-//            // 출발 시간이 도착 시간보다 늦다는 건 전날 출발이라는 의미
-//            departureDateTime = request.getDate().minusDays(1).atTime(calculatedDepartureTime);
-//        } else {
-//            departureDateTime = request.getDate().atTime(calculatedDepartureTime);
-//        }
-//        LocalDateTime departureDateTime = tmapService.calculateDepartureTime(
-//                DepartureCoord,
-//                destinationCoord,
-//                request.getArrivalTime(),
-//                request.getDate()
-//        );
-
-        Map<String, Object> departureInfo = tmapService.calculateDepartureTime(
-                DepartureCoord,
-                destinationCoord,
-                request.getArrivalTime(),
-                request.getDate()
-        );
-
-        LocalDateTime departureDateTime = (LocalDateTime) departureInfo.get("departureDateTime");
-        int totalTimeInSeconds = (int) departureInfo.get("totalTime");
+            // 2. 출발/도착 좌표 계산
+            Coordinate DepartureCoord = tmapGeocodingClient.getCoordinates(
+                    request.getDepartureCityDo(),
+                    request.getDepartureGuGun(),
+                    request.getDepartureDong(),
+                    request.getDepartureBunji()
+            );
+            System.out.println("DepartureCoord: " + DepartureCoord);
+            System.out.println("DepartureCoord lat: " + DepartureCoord.getLat());
+            System.out.println("DepartureCoord lon: " + DepartureCoord.getLon());
 
 
-        // 출발 시각
-//        LocalDateTime departureDateTime = calculatedDepartureDateTime;
+            Coordinate destinationCoord = tmapGeocodingClient.getCoordinates(
+                    request.getDestinationCityDo(),
+                    request.getDestinationGuGun(),
+                    request.getDestinationDong(),
+                    request.getDestinationBunji()
+            );
+            System.out.println("DestinationCoord: " + destinationCoord);
+
+            System.out.println("TMAP API 호출: startX=" + DepartureCoord.getLon() +
+                    ", startY=" + DepartureCoord.getLat() +
+                    ", endX=" + destinationCoord.getLon() +
+                    ", endY=" + destinationCoord.getLat() +
+                    ", arrivalTime=" + request.getArrivalTime());
 
 
-
-        LocalDateTime arrivalDateTime = request.getDate().atTime(request.getArrivalTime());
-
-//        long duration = java.time.Duration.between(departureDateTime, arrivalDateTime).getSeconds();
-
-
-        // 3. 해당 가족의 예약 중, 시간 겹치는 예약 조회
-//        List<Reservation> overlapping = reservationRepository.findByFamilyGroupAndDateAndTimeOverlap(
-//                familyGroup.getId(), request.getDate(), calculatedDepartureTime, request.getArrivalTime());
-        List<Reservation> overlapping = reservationRepository.findOverlappingReservations(
-                familyGroup.getId(),
-                departureDateTime,
-                arrivalDateTime
-        );
-
-        // 4. 충돌 예약 없음 -> 단독 예약 확정
-        if (overlapping.isEmpty()) {
-            Reservation reservation = reservationRepository.save(
-                    Reservation.builder()
-                            .user(user)
-                            .title(request.getTitle())
-//                            .date(request.getDate())
-//                            .departureTime(calculatedDepartureTime)
-//                            .arrivalTime(request.getArrivalTime())
-                            .departureDateTime(departureDateTime)
-                            .arrivalDateTime(arrivalDateTime)
-                            .departureLatitude(Double.parseDouble(DepartureCoord.getLat()))
-                            .departureLongitude(Double.parseDouble(DepartureCoord.getLon()))
-                            .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
-                            .destinationLongitude(Double.parseDouble(destinationCoord.getLon()))
-                            .travelTimeSec(totalTimeInSeconds)
-                            .status(ReservationStatus.CONFIRMED)
-                            .build()
+            // 3. 출발 시간 계산
+            Map<String, Object> departureInfo = tmapService.calculateDepartureTime(
+                    DepartureCoord,
+                    destinationCoord,
+                    request.getArrivalTime(),
+                    request.getDate()
             );
 
-            return ReservationResponse.builder()
-                    .reservationId(reservation.getId())
-                    .status(reservation.getStatus())
-                    .calculatedDepartureTime(departureDateTime)
-                    .message("예약이 확정되었습니다.")
-                    .build();
-        } else {
+            LocalDateTime departureDateTime = (LocalDateTime) departureInfo.get("departureDateTime");
+            int totalTimeInSeconds = (int) departureInfo.get("totalTime");
+            System.out.println("departureDateTime: " + departureDateTime + ", totalTime: " + totalTimeInSeconds);
 
-            // 5. 겹치는 예약 있음 → 확인할 목록 필터링 (CONFIRMED, CARPOOL만 대상으로)
-            List<Reservation> confirmedReservations = overlapping.stream()
-                    .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED || r.getStatus() == ReservationStatus.CARPOOL)
-                    .collect(Collectors.toList());
+            LocalDateTime arrivalDateTime = request.getDate().atTime(request.getArrivalTime());
+            System.out.println("arrivalDateTime: " + arrivalDateTime);
 
-            // 6. 카풀 최대 인원 체크
-            if (confirmedReservations.size() >= 2) {
-                throw new CustomException(ErrorCode.CARPOOL_CAPACITY_EXCEEDED);
-            }
-
-            // 7. 카풀 가능성 판단
-            Integer canCarpool = tmapService.canCarpoolTogether(confirmedReservations, request);
-
-
-            if (canCarpool == null) {
-                throw new CustomException(ErrorCode.CARPOOL_NOT_POSSIBLE);
-            }
-
-
-            // 8. 새 예약을 Pending 상태로 저장
-            Reservation pendingReservation = reservationRepository.save(
-                    Reservation.builder()
-                            .user(user)
-                            .title(request.getTitle())
-//                            .date(request.getDate())
-//                            .departureTime(calculatedDepartureTime)
-//                            .arrivalTime(request.getArrivalTime())
-                            .departureDateTime(departureDateTime)
-                            .arrivalDateTime(arrivalDateTime)
-                            .departureLatitude(Double.parseDouble(DepartureCoord.getLat()))
-                            .departureLongitude(Double.parseDouble(DepartureCoord.getLon()))
-                            .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
-                            .destinationLongitude(Double.parseDouble(destinationCoord.getLon()))
-//                            .travelTimeSec() // 여기 수정해야 함
-                            .status(ReservationStatus.PENDING)
-                            .build()
+            // 4. 해당 가족의 예약 중, 시간 겹치는 예약 조회
+            List<Reservation> overlapping = reservationRepository.findOverlappingReservations(
+                    familyGroup.getId(),
+                    departureDateTime,
+                    arrivalDateTime
             );
+            System.out.println("겹치는 예약 수: " + overlapping.size());
 
-            // 9. 기존 예약자 각각에게 카풀 제안 (CarpoolProposal 생성)
-            // "기존 예약자 각각에게 당신의 예약과 겹치는 새로운 사람이 있으니, 카풀 제안할게요. 괜찮으면 승인해줘요." 라는 의도로 CarpoolProposal을 저장하는 로직
-            for (Reservation existing  : confirmedReservations) {
-                carpoolProposalRepository.save(
-                        CarpoolProposal.builder()
-                                .fromReservation(existing)
-                                .toReservation(pendingReservation)
-//                                .proposedDepartureTime(LocalDateTime.of(request.getDate(), calculatedDepartureTime))
-                                .proposedDepartureTime(departureDateTime)
+            // 5. 충돌 예약 없음 -> 단독 예약 확정
+            if (overlapping.isEmpty()) {
+                Reservation reservation = reservationRepository.save(
+                        Reservation.builder()
+                                .user(user)
+                                .title(request.getTitle())
+                                .departureDateTime(departureDateTime)
+                                .arrivalDateTime(arrivalDateTime)
+                                .departureLatitude(Double.parseDouble(DepartureCoord.getLat()))
+                                .departureLongitude(Double.parseDouble(DepartureCoord.getLon()))
+                                .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
+                                .destinationLongitude(Double.parseDouble(destinationCoord.getLon()))
+                                .travelTimeSec(totalTimeInSeconds)
+                                .status(ReservationStatus.CONFIRMED)
+                                .build()
+                );
+                System.out.println("예약 확정 완료, reservationId: " + reservation.getId());
+
+                return ReservationResponse.builder()
+                        .reservationId(reservation.getId())
+                        .status(reservation.getStatus())
+                        .calculatedDepartureTime(departureDateTime)
+                        .message("예약이 확정되었습니다.")
+                        .build();
+            } else {
+                // 6. 겹치는 예약 있음 → 확인할 목록 필터링 (CONFIRMED, CARPOOL만 대상으로)
+                List<Reservation> confirmedReservations = overlapping.stream()
+                        .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED || r.getStatus() == ReservationStatus.CARPOOL)
+                        .collect(Collectors.toList());
+                System.out.println("확정/카풀 예약 수: " + confirmedReservations.size());
+
+                // 7. 카풀 최대 인원 체크
+                if (confirmedReservations.size() >= 2) {
+                    System.out.println("카풀 최대 인원 초과");
+                    throw new CustomException(ErrorCode.CARPOOL_CAPACITY_EXCEEDED);
+                }
+
+                // 8. 카풀 가능성 판단
+                Integer canCarpool = tmapService.canCarpoolTogether(confirmedReservations, request);
+                System.out.println("canCarpool 결과: " + canCarpool);
+                if (canCarpool == null) {
+                    throw new CustomException(ErrorCode.CARPOOL_NOT_POSSIBLE);
+                }
+
+                LocalDateTime calculatedDepartureDateTime = arrivalDateTime.minusSeconds(canCarpool); // 요청자 출발 시간 재계산
+
+                // 9. 새 예약을 Pending 상태로 저장
+                Reservation pendingReservation = reservationRepository.save(
+                        Reservation.builder()
+                                .user(user)
+                                .title(request.getTitle())
+                                .departureDateTime(departureDateTime)
+                                .arrivalDateTime(arrivalDateTime)
+                                .departureLatitude(Double.parseDouble(DepartureCoord.getLat()))
+                                .departureLongitude(Double.parseDouble(DepartureCoord.getLon()))
+                                .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
+                                .destinationLongitude(Double.parseDouble(destinationCoord.getLon()))
                                 .status(ReservationStatus.PENDING)
                                 .build()
                 );
+                System.out.println("Pending 예약 저장, reservationId: " + pendingReservation.getId());
 
-                // TODO: 알림 시스템 연동 - 기존 예약자에게 알림 전송
+                // 10. 기존 예약자 각각에게 카풀 제안
+                for (Reservation existing : confirmedReservations) {
 
+                    // 기존 예약의 출발 시간 업데이트
+                    LocalDateTime updatedDeparture = existing.getArrivalDateTime().minusSeconds(canCarpool);
+                    existing.setDepartureDateTime(updatedDeparture); // 일단 그냥 업데이트 되도록 함(수락 없어도)
+
+                    // DB에 저장
+                    reservationRepository.save(existing);
+
+                    // 기존 예약자에게 카풀 제안 생성
+                    carpoolProposalRepository.save(
+                            CarpoolProposal.builder()
+                                    .fromReservation(existing)
+                                    .toReservation(pendingReservation)
+                                    .proposedDepartureTime(departureDateTime)
+                                    .status(ReservationStatus.PENDING)
+                                    .build()
+                    );
+
+                    // TODO: 알림 시스템 연동 - 기존 예약자에게 알림 전송
+                }
+
+                return ReservationResponse.builder()
+                        .reservationId(pendingReservation.getId())
+                        .status(pendingReservation.getStatus())
+                        .calculatedDepartureTime(departureDateTime)
+                        .message("카풀 제안이 기존 예약자에게 전송되었습니다. 승인을 기다리는 중입니다.")
+                        .build();
             }
 
-            return ReservationResponse.builder()
-                    .reservationId(pendingReservation.getId())
-                    .status(pendingReservation.getStatus())
-                    .calculatedDepartureTime(departureDateTime)
-                    .message("카풀 제안이 기존 예약자에게 전송되었습니다. 승인을 기다리는 중입니다.")
-                    .build();
+        } catch (Exception e) {
+            System.out.println("예약 생성 중 에러 발생: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
 
-            /*
+        /*
             ✅ 다음 구현 추천
                 이 구조에서 이어서 구현해야 할 핵심은:
 
@@ -246,6 +250,5 @@ public class ReservationService {
                     .build();
 
              */
-        }
     }
 }

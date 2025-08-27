@@ -33,6 +33,7 @@ public class SignupTemp {
 //    @OneToMany(mappedBy = "signupTemp", cascade = CascadeType.ALL, orphanRemoval = true)
 //    @Builder.Default
 //    private List<TempZone> tempZones = new ArrayList<>();
+    @Builder.Default
     @OneToMany(mappedBy = "signupTemp", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<TempZone> tempZones = new ArrayList<>();
 

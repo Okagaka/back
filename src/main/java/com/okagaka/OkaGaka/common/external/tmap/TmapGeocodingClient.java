@@ -41,12 +41,17 @@ public class TmapGeocodingClient {
 
         JsonNode coordinateInfo = response.getBody().path("coordinateInfo");
 
+        System.out.println("TMAP Geocoding 응답: " + response.getBody().toPrettyString());
+
         if (coordinateInfo.isMissingNode() || coordinateInfo.path("lon").isMissingNode()) {
-            throw new RuntimeException("좌표 변환 실패");
+            throw new RuntimeException("좌표 변환 실패: " +
+                    "cityDo=" + cityDo + ", guGun=" + guGun + ", dong=" + dong + ", bunji=" + bunji);
         }
 
         String longitude = coordinateInfo.path("lon").asText();
         String latitude = coordinateInfo.path("lat").asText();
+
+        System.out.println("TMAP 좌표 변환 결과: lat=" + latitude + ", lon=" + longitude);
 
         return new Coordinate(latitude, longitude);
     }
