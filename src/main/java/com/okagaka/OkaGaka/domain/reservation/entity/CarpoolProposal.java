@@ -1,5 +1,6 @@
 package com.okagaka.OkaGaka.domain.reservation.entity;
 
+import com.okagaka.OkaGaka.domain.reservation.enums.ProposalStatus;
 import com.okagaka.OkaGaka.domain.reservation.enums.ReservationStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -34,7 +35,7 @@ public class CarpoolProposal {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private ReservationStatus status;
+    private ProposalStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -43,7 +44,7 @@ public class CarpoolProposal {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
-            this.status = ReservationStatus.PENDING;
+            this.status = ProposalStatus.PENDING;
         }
     }
 
