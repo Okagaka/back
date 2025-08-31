@@ -10,14 +10,6 @@ import java.util.Optional;
 
 public interface CarpoolProposalRepository extends JpaRepository<CarpoolProposal, Long> {
 
-    // 특정 예약에 대한 모든 카풀 제안 조회
-//    List<CarpoolProposal> findByReservationId(Long reservationId);
-
-    // 특정 예약 + 사용자에 대한 제안 조회
-//    Optional<CarpoolProposal> findByReservationIdAndUserId(Long reservationId, Long userId);
-
-    // 특정 사용자에게 보내진 제안 중 특정 상태의 제안들
-//    List<CarpoolProposal> findByUserIdAndStatus(Long userId, ReservationStatus status);
 
     // 특정 예약에서 ACCEPTED된 제안이 있는지
     boolean existsByFromReservation_IdAndStatus(Long reservationId, ReservationStatus status);
@@ -28,8 +20,11 @@ public interface CarpoolProposalRepository extends JpaRepository<CarpoolProposal
     // 특정 기존 예약자 Reservation이 받은 제안 조회
     List<CarpoolProposal> findByFromReservationAndStatus(Reservation fromReservation, ReservationStatus status);
 
-    // 제안 상태가 확정된 것만 조회
-//    List<CarpoolProposal> findByReservationIdAndStatusIn(Long reservationId, List<ReservationStatus> statuses);
+    // 특정 기존 예약자 Reservation 여러 건 조회 + 상태
+    List<CarpoolProposal> findByFromReservationInAndStatus(List<Reservation> fromReservations, ReservationStatus status);
+
+    // toReservation 필드로 CarpoolProposal 목록 조회
+    List<CarpoolProposal> findByToReservation(Reservation toReservation);
 
 
 }

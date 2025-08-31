@@ -1,6 +1,9 @@
 package com.okagaka.OkaGaka.domain.tmap.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import com.okagaka.OkaGaka.common.exception.CustomException;
 import com.okagaka.OkaGaka.common.exception.ErrorCode;
 import com.okagaka.OkaGaka.common.external.tmap.TmapGeocodingClient;
@@ -89,6 +92,7 @@ public class TmapService {
 
         if (response.getStatusCode() == HttpStatus.OK) {
             JsonNode body = response.getBody();
+
 
             JsonNode features = body.path("features");
             if (features.isArray() && !features.isEmpty()) { //features.size() > 0
