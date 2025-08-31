@@ -33,6 +33,10 @@ public class ApiResponse<T> {
         return new ApiResponse<>(SuccessCode.SUCCESS, data);
     }
 
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return new ApiResponse<>(200, message, data); // 200 OK 기준
+    }
+
     public static <T> ApiResponse<T> error(ErrorCode code) {
         return new ApiResponse<>(code, null);
     }

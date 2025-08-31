@@ -1,6 +1,8 @@
 package com.okagaka.OkaGaka.common.external.tmap;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -52,7 +54,21 @@ public class TmapRouteMatrixService {
         ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
 
         if (response.getStatusCode() == HttpStatus.OK) {
-            return response.getBody();
+            JsonNode resbody = response.getBody();
+
+            // JSON 전체 Pretty Print
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String prettyJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(resbody);
+                System.out.println("=== TMAP 경로 매트릭스 전체 Response ===");
+                System.out.println(prettyJson);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+
+            return resbody;
+
+//            return response.getBody();
         } else {
             throw new RuntimeException("경로 매트릭스 조회 실패: " + response.getStatusCode());
         }
@@ -66,6 +82,7 @@ public class TmapRouteMatrixService {
         if (matrixResponse.has("matrixRoutes")) {
             JsonNode matrixRoutes = matrixResponse.get("matrixRoutes");
 
+            // 이 부분 점검? 각 경로별로 duration이 들어가는가? return 값 출력해보기
             for (JsonNode route : matrixRoutes) {
                 int originIndex = route.get("originIndex").asInt();
                 int destinationIndex = route.get("destinationIndex").asInt();

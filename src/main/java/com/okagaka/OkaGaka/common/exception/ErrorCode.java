@@ -22,9 +22,12 @@ public enum ErrorCode {
     CARPOOL_NOT_POSSIBLE(HttpStatus.CONFLICT, "해당 시간에는 이미 예약이 있으며, 카풀 조건이 맞지 않아 예약이 불가능합니다."),
     CARPOOL_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "카풀 가능 인원(3명)을 초과하였습니다."),
 //    CARPOOL_NOT_POSSIBLE_WITH_EXISTING("기존 예약 그룹과 카풀이 불가능합니다."),
+    CARPOOL_PROPOSAL_NOT_FOUND(HttpStatus.NOT_FOUND, "카풀 제안을 찾을 수 없습니다."),
+    UNAUTHORIZED_ACTION(HttpStatus.FORBIDDEN, "권한이 없는 동작입니다."),
 
     TMAP_GUIDE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "길 안내 예측에 실패했습니다."),
     DEPARTURE_TIME_NOT_FOUND(HttpStatus.BAD_REQUEST, "departureTime 값을 찾을 수 없습니다."),
+    CARPOOL_DECISION_PENDING(HttpStatus.CONFLICT, "카풀 제안이 아직 처리되지 않았습니다."),
 
 
 

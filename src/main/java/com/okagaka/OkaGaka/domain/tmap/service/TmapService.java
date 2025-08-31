@@ -1,6 +1,9 @@
 package com.okagaka.OkaGaka.domain.tmap.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import com.okagaka.OkaGaka.common.exception.CustomException;
 import com.okagaka.OkaGaka.common.exception.ErrorCode;
 import com.okagaka.OkaGaka.common.external.tmap.TmapGeocodingClient;
@@ -15,6 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.okagaka.OkaGaka.domain.reservation.entity.Reservation;
 import com.okagaka.OkaGaka.domain.reservation.dto.ReservationRequest;
+import com.okagaka.OkaGaka.domain.tmap.dto.CarpoolCheckResult;
 import com.okagaka.OkaGaka.common.external.tmap.Coordinate;
 
 import java.time.*;
@@ -89,6 +93,7 @@ public class TmapService {
         if (response.getStatusCode() == HttpStatus.OK) {
             JsonNode body = response.getBody();
 
+
             JsonNode features = body.path("features");
             if (features.isArray() && !features.isEmpty()) { //features.size() > 0
                 JsonNode properties = features.get(0).path("properties");
@@ -145,7 +150,7 @@ public class TmapService {
 
     // 카풀 가능 여부
     // boolean canCarpool = tmapService.canCarpoolTogether(confirmedReservations, request);
-    public Integer canCarpoolTogether(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
+    public CarpoolCheckResult canCarpoolTogether(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
 
         // 1. 좌표 수집
         List<Coordinate> origins = new ArrayList<>();
@@ -184,6 +189,7 @@ public class TmapService {
         List<MatrixRouteInfoDTO> routeInfos = tmapRouteMatrixService.estimateOptimizedTravelTime(origins, destinations);
 
         int maxDifferenceSec = 30 * 60;
+        Map<Long, LocalDateTime> updatedDepartureTimes = new HashMap<>();
 
         // 3.기존 예약 비교
         for (Reservation existing : confirmedReservations) {
@@ -201,13 +207,19 @@ public class TmapService {
                 throw new RuntimeException("해당 예약에 대한 매트릭스 결과를 찾을 수 없음");
             }
 
+            // 기존 예약과 30분 이상 차이 나면 카풀 불가
+            long travelDiff = match.getDuration() - existing.getTravelTimeSec();
+            if (Math.abs(travelDiff) > maxDifferenceSec) {
+                return null; // 30분 이상 차이 → 카풀 불가
+            }
+
+            // 기존 예약 출발시간 재계산
+            LocalDateTime newDepartureTime = existing.getArrivalDateTime().minusSeconds(match.getDuration());
+            updatedDepartureTimes.put(existing.getId(), newDepartureTime);
+
             // 새로 계산된 소요 시간 저장 (승인 전까지 임시)
             existing.setRecalculatedTravelTimeSec(match.getDuration());
 
-            // 기존 예약과 30분 이상 차이 나면 카풀 불가
-            if (Math.abs(match.getDuration() - existing.getTravelTimeSec()) > maxDifferenceSec) {
-                return null;
-            }
 
         }
 
@@ -225,7 +237,7 @@ public class TmapService {
 //            return false;
 //        }
 
-        return newMatch.getDuration(); // true → 새 예약 소요 시간 반환
+        return new CarpoolCheckResult(updatedDepartureTimes, newMatch.getDuration());
 
 //        return true; // 모든 예약이 허용 시간 이내 → 카풀 가능
 

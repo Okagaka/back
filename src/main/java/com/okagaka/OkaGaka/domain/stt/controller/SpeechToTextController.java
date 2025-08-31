@@ -2,6 +2,7 @@ package com.okagaka.OkaGaka.domain.stt.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +12,7 @@ import com.okagaka.OkaGaka.domain.user.repository.UserRepository;
 import com.okagaka.OkaGaka.domain.user.entity.User;
 import com.okagaka.OkaGaka.domain.stt.service.SpeechToTextService;
 import com.okagaka.OkaGaka.common.response.ApiResponse;
+import com.okagaka.OkaGaka.common.security.CustomUserDetails;
 import com.okagaka.OkaGaka.common.security.JwtTokenProvider;
 
 import org.springframework.http.ResponseEntity;
@@ -32,34 +34,36 @@ public class SpeechToTextController {
 
     private final SpeechToTextService speechToTextService;
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+//    private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
-    @PostMapping("/{userId}")
+    @PostMapping
     public ResponseEntity<ApiResponse<String>> uploadAudioAndRecognize(
-            @PathVariable Long userId,
+//            @PathVariable Long userId,
             @RequestParam("file") MultipartFile file,
-            @RequestHeader("Authorization") String authorizationHeader
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         File tempFile = null;
         File monoFile = null;
 
         try {
 
-            // 0. 토큰 유효성 검증
-            if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-                return ResponseEntity.status(401).body(ApiResponse.error("토큰이 없습니다."));
-            }
+            Long userId = userDetails.getUserId(); // JWT에서 가져온 사용자 ID
 
-            String token = authorizationHeader.substring(7); // "Bearer " 제거
-            if (!jwtTokenProvider.validateToken(token)) {
-                return ResponseEntity.status(401).body(ApiResponse.error("유효하지 않은 토큰입니다."));
-            }
-
-            Long userIdFromToken = jwtTokenProvider.getUserId(token);
-            if (!userIdFromToken.equals(userId)) {
-                return ResponseEntity.status(403).body(ApiResponse.error("권한이 없습니다."));
-            }
+//            // 0. 토큰 유효성 검증
+//            if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+//                return ResponseEntity.status(401).body(ApiResponse.error("토큰이 없습니다."));
+//            }
+//
+//            String token = authorizationHeader.substring(7); // "Bearer " 제거
+//            if (!jwtTokenProvider.validateToken(token)) {
+//                return ResponseEntity.status(401).body(ApiResponse.error("유효하지 않은 토큰입니다."));
+//            }
+//
+//            Long userIdFromToken = jwtTokenProvider.getUserId(token);
+//            if (!userIdFromToken.equals(userId)) {
+//                return ResponseEntity.status(403).body(ApiResponse.error("권한이 없습니다."));
+//            }
 
             // 1. 파일 확장자 체크
             if (!file.getOriginalFilename().toLowerCase().endsWith(".wav")) {
