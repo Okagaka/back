@@ -228,7 +228,6 @@ public class ReservationService {
             e.printStackTrace();
             throw e;
         }
-
     }
 
     /**
@@ -405,7 +404,7 @@ public class ReservationService {
                             .fromReservationId(fromId)
                             .toReservationId(toId)
                             .fromReservationTitle(p.getFromReservation().getTitle())
-                            .fromReservationUserName(p.getFromReservation().getUser().getName())
+                            .toReservationUserName(p.getToReservation().getUser().getName())
                             .proposedDepartureTime(p.getProposedDepartureTime())
                             .status(p.getStatus())
                             .build();
