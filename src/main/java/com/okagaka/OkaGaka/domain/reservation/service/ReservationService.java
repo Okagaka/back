@@ -385,6 +385,7 @@ public class ReservationService {
     /**
      * 사용자가 받은 PENDING 카풀 제안 목록 조회
      */
+    // 나의 예약명, 제안한 사람
     @Transactional(readOnly = true)
     public List<CarpoolProposalResponse> getReceivedCarpoolProposals(Long userId) {
 
@@ -403,6 +404,8 @@ public class ReservationService {
                             .proposalId(p.getId())
                             .fromReservationId(fromId)
                             .toReservationId(toId)
+                            .fromReservationTitle(p.getFromReservation().getTitle())
+                            .fromReservationUserName(p.getFromReservation().getUser().getName())
                             .proposedDepartureTime(p.getProposedDepartureTime())
                             .status(p.getStatus())
                             .build();
