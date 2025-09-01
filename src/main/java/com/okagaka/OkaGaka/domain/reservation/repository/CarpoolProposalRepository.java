@@ -1,9 +1,12 @@
 package com.okagaka.OkaGaka.domain.reservation.repository;
 
 import com.okagaka.OkaGaka.domain.reservation.entity.CarpoolProposal;
+import com.okagaka.OkaGaka.domain.reservation.enums.ProposalStatus;
 import com.okagaka.OkaGaka.domain.reservation.enums.ReservationStatus;
 import com.okagaka.OkaGaka.domain.reservation.entity.Reservation;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +28,17 @@ public interface CarpoolProposalRepository extends JpaRepository<CarpoolProposal
 
     // toReservation 필드로 CarpoolProposal 목록 조회
     List<CarpoolProposal> findByToReservation(Reservation toReservation);
+
+    @Query("""
+       SELECT c 
+       FROM CarpoolProposal c
+       JOIN FETCH c.fromReservation r
+       JOIN FETCH c.toReservation t
+       WHERE c.status = :status
+       AND r.user.id = :userId
+       """)
+    List<CarpoolProposal> findPendingProposalsForUser(@Param("userId") Long userId,
+                                                      @Param("status") ProposalStatus status);
 
 
 }

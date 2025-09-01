@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -231,12 +232,35 @@ public class ReservationService {
     }
 
     /**
-     * 최적 3인 카풀 계산 로직
+     * DFS 기반 최적 3인 카풀 계산 로직
      */
 //    public CarpoolCheckResult optimizeCarpool(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
+//        // 1. 좌표 변환
+//        Coordinate newDeparture = tmapGeocodingClient.getCoordinates(
+//                newRequest.getDepartureCityDo(),
+//                newRequest.getDepartureGuGun(),
+//                newRequest.getDepartureDong(),
+//                newRequest.getDepartureBunji()
+//        );
+//        Coordinate newDestination = tmapGeocodingClient.getCoordinates(
+//                newRequest.getDestinationCityDo(),
+//                newRequest.getDestinationGuGun(),
+//                newRequest.getDestinationDong(),
+//                newRequest.getDestinationBunji()
+//        );
+//
+//        // 2. 모든 후보 예약 모으기
+//        List<Reservation> allReservations = new ArrayList<>(confirmedReservations);
+//        Reservation newRes = Reservation.builder()
+//                .departureLatitude(Double.parseDouble(newDeparture.getLat()))
+//                .departureLongitude(Double.parseDouble(newDeparture.getLon()))
+//                .destinationLatitude(Double.parseDouble(newDestination.getLat()))
+//                .destinationLongitude(Double.parseDouble(newDestination.getLon()))
+//                .arrivalDateTime(newRequest.getDate().atTime(newRequest.getArrivalTime()))
+//                .build();
+//        allReservations.add(newRes);
 //
 //
-//        return true;
 //    }
 
 
@@ -363,23 +387,54 @@ public class ReservationService {
      */
     @Transactional(readOnly = true)
     public List<CarpoolProposalResponse> getReceivedCarpoolProposals(Long userId) {
-        // 1. 사용자의 모든 예약 조회
-        List<Reservation> userReservations = reservationRepository.findByUserId(userId);
 
-        // 2. 각 예약에 대한 PENDING 카풀 제안 조회
-        List<CarpoolProposal> pendingProposals = carpoolProposalRepository.findByFromReservationInAndStatus(
-                userReservations, ReservationStatus.PENDING
-        );
 
-        // 3. DTO 변환
+        List<CarpoolProposal> pendingProposals =
+                carpoolProposalRepository.findPendingProposalsForUser(userId, ProposalStatus.PENDING);
+
+
+        // DTO 변환 (null 체크 포함)
         return pendingProposals.stream()
-                .map(p -> CarpoolProposalResponse.builder()
-                        .proposalId(p.getId())
-                        .fromReservationId(p.getFromReservation().getId())
-                        .toReservationId(p.getToReservation().getId())
-                        .proposedDepartureTime(p.getProposedDepartureTime())
-                        .status(p.getStatus())
-                        .build()
-                ).collect(Collectors.toList());
+                .map(p -> {
+                    Long fromId = p.getFromReservation() != null ? p.getFromReservation().getId() : null;
+                    Long toId = p.getToReservation() != null ? p.getToReservation().getId() : null;
+
+                    return CarpoolProposalResponse.builder()
+                            .proposalId(p.getId())
+                            .fromReservationId(fromId)
+                            .toReservationId(toId)
+                            .proposedDepartureTime(p.getProposedDepartureTime())
+                            .status(p.getStatus())
+                            .build();
+                })
+                .collect(Collectors.toList());
+//        // 1. 사용자의 모든 예약 조회
+//        List<Reservation> userReservations = reservationRepository.findByUserId(userId);
+//
+//        // 1-1. 예약이 없으면 바로 빈 리스트 반환
+//        if (userReservations.isEmpty()) {
+//            return Collections.emptyList();
+//        }
+//
+//        // 2. 각 예약에 대한 PENDING 카풀 제안 조회
+//        List<CarpoolProposal> pendingProposals = carpoolProposalRepository.findByFromReservationInAndStatus(
+//                userReservations, ReservationStatus.PENDING
+//        );
+//
+//        // 3. DTO 변환 (null 체크 포함)
+//        return pendingProposals.stream()
+//                .map(p -> {
+//                    Long fromId = p.getFromReservation() != null ? p.getFromReservation().getId() : null;
+//                    Long toId = p.getToReservation() != null ? p.getToReservation().getId() : null;
+//
+//                    return CarpoolProposalResponse.builder()
+//                            .proposalId(p.getId())
+//                            .fromReservationId(fromId)
+//                            .toReservationId(toId)
+//                            .proposedDepartureTime(p.getProposedDepartureTime())
+//                            .status(p.getStatus())
+//                            .build();
+//                })
+//                .collect(Collectors.toList());
     }
 }
