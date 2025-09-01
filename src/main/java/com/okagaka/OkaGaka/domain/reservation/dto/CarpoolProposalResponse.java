@@ -18,7 +18,7 @@ public class CarpoolProposalResponse {
     private Long fromReservationId; // 기존 예약자
     private Long toReservationId;   // 요청자
     private String fromReservationTitle;
-    private String fromReservationUserName;
+    private String toReservationUserName;
     private LocalDateTime proposedDepartureTime;
     private ProposalStatus status;
 }
