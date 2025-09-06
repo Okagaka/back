@@ -9,6 +9,7 @@ import com.okagaka.OkaGaka.common.exception.ErrorCode;
 import com.okagaka.OkaGaka.common.external.tmap.TmapGeocodingClient;
 import com.okagaka.OkaGaka.common.external.tmap.TmapRouteMatrixService;
 import com.okagaka.OkaGaka.common.external.tmap.dto.MatrixRouteInfoDTO;
+import com.okagaka.OkaGaka.domain.reservation.service.CarpoolService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -141,10 +142,127 @@ public class TmapService {
         return offsetDateTime.format(formatter);
     }
 
-    public boolean canCarpool(Reservation existing, ReservationRequest request) {
-        // TMAP 경로 매트릭스 API를 사용해 기존 예약 + 새 예약 병합 경로 계산
-        // 도착 시간 범위 안에 둘 다 도착 가능하면 true
-        return true; // 실제 API 연동 필요
+    public RouteResult calculateMultiRouteTravelTime(List<CarpoolService.Point> path, LocalDateTime targetArrivalTime) throws Exception {
+
+        if (path.size() < 2) {
+            throw new IllegalArgumentException("경로는 최소 출발지와 도착지를 포함해야 합니다.");
+        }
+
+        String url = UriComponentsBuilder
+                .fromHttpUrl("https://apis.openapi.sk.com/tmap/routes/routeSequential30")
+                .queryParam("version", "1")
+                .build()
+                .toUriString();
+
+        // 출발, 목적지, 경유지 분리
+        CarpoolService.Point start = path.get(0);
+        CarpoolService.Point end = path.get(path.size() - 1);
+        List<CarpoolService.Point> vias = path.subList(1, path.size() - 1);
+
+        // 임의 출발 시간 설정(TMAP API는 출발 시간을 기준으로 계산)
+        LocalDateTime provisionalStartTime = LocalDateTime.now().plusMinutes(1); // 현재 시각 기준 임시 출발 시간
+        DateTimeFormatter startTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm"); // 티맵 API 요구사항에 맞게 수정
+        String startTimeStr = provisionalStartTime.format(startTimeFormatter);
+
+        // 요청 바디 구성
+        Map<String, Object> body = new HashMap<>();
+        body.put("reqCoordType", "WGS84GEO");
+        body.put("resCoordType", "WGS84GEO");
+        body.put("carType", 1);
+        body.put("searchOption", 0); // 교통 최적 + 추천
+
+        body.put("startName", "출발");
+        body.put("startX", String.valueOf(start.getLon()));
+        body.put("startY", String.valueOf(start.getLat()));
+
+        body.put("endName", "도착");
+        body.put("endX", String.valueOf(end.getLon()));
+        body.put("endY", String.valueOf(end.getLat()));
+
+        body.put("startTime", startTimeStr);
+
+        // viaPoints 설정
+        List<Map<String, String>> viaPoints = new ArrayList<>();
+        for (int i = 0; i < vias.size(); i++) {
+            CarpoolService.Point vp = vias.get(i);
+            Map<String, String> v = new HashMap<>();
+            v.put("viaPointId", String.format("%02d", i + 1));
+            v.put("viaPointName", vp.toString());
+            v.put("viaX", String.valueOf(vp.getLon()));
+            v.put("viaY", String.valueOf(vp.getLat()));
+            viaPoints.add(v);
+        }
+
+        body.put("viaPoints", viaPoints);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.set("appKey", appKey);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                Map.class
+        );
+
+        Map<String, Object> resp = response.getBody();
+        if (resp == null) {
+            throw new RuntimeException("Tmap API 응답이 null");
+        }
+
+        // totalTime 추출 (초 단위)
+        Map<String, Object> properties = (Map<String, Object>) resp.get("properties");
+        int totalTime = Integer.parseInt((String) properties.get("totalTime"));
+
+        // features → 각 경유지 도착 시간
+        List<Map<String, Object>> features = (List<Map<String, Object>>) resp.get("features");
+        Map<String, LocalDateTime> arrivalTimes = new HashMap<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+        LocalDateTime apiStartTime = null;
+        for (Map<String, Object> feature : features) {
+            Map<String, Object> prop = (Map<String, Object>) feature.get("properties");
+            String viaPointName = (String) prop.get("viaPointName");
+            String arriveTime = (String) prop.get("arriveTime"); // YYYYMMDDHHMMSS
+            if (arriveTime != null && viaPointName != null) {
+                LocalDateTime time = LocalDateTime.parse(arriveTime, formatter);
+                arrivalTimes.put(viaPointName, time);
+
+                // (?) 출발지 도착 시간 확인
+                if (viaPointName.equals(start.toString())) {
+                    apiStartTime = time;
+                }
+            }
+        }
+
+        if (apiStartTime == null) {
+            throw new RuntimeException("출발지에 해당하는 경유지 도착 시간이 없습니다.");
+        }
+
+        return new RouteResult(totalTime, arrivalTimes);
+
+    }
+
+    public static class RouteResult {
+        private final int totalTimeSec;
+        private final Map<String, LocalDateTime> arrivalTimes;
+
+        public RouteResult(int totalTimeSec, Map<String, LocalDateTime> arrivalTimes) {
+            this.totalTimeSec = totalTimeSec;
+            this.arrivalTimes = arrivalTimes;
+        }
+
+        public int getTotalTimeSec() {
+            return totalTimeSec;
+        }
+
+        public Map<String, LocalDateTime> getArrivalTimes() {
+            return arrivalTimes;
+        }
     }
 
 

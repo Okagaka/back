@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Location Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<h1>Location WebSocket Test</h1>
+
+<label>JWT Token: </label>
+<input type="text" id="jwt" style="width:400px;" value="여기에발급받은JWT토큰"/>
+<br/><br/>
+
+<label>Latitude: </label>
+<input type="text" id="lat" value="37.5665"/>
+<label>Longitude: </label>
+<input type="text" id="lon" value="126.9780"/>
+<button onclick="sendLocation()">Send Location</button>
+
+<h2>Received Messages:</h2>
+<pre id="messages"></pre>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        const jwt = document.getElementById("jwt").value;
+        const socket = new SockJS('http://localhost:8080/ws-location');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({Authorization: 'Bearer ' + jwt}, function (frame) {
+            console.log('Connected: ' + frame);
+
+            // 그룹 1 구독 (DB에 맞게 groupId 조정)
+            stompClient.subscribe('/topic/group/1', function (message) {
+                const msg = JSON.parse(message.body);
+                document.getElementById("messages").textContent += JSON.stringify(msg, null, 2) + "\n";
+            });
+        }, function(error) {
+            console.error("Connection error:", error);
+            alert("WebSocket 연결 실패: " + error);
+        });
+    }
+
+    function sendLocation() {
+        const lat = parseFloat(document.getElementById("lat").value);
+        const lon = parseFloat(document.getElementById("lon").value);
+
+        const payload = {
+            latitude: lat,
+            longitude: lon
+        };
+
+        stompClient.send("/app/location/update", {}, JSON.stringify(payload));
+    }
+
+    connect();
+</script>
+</body>
+</html>
