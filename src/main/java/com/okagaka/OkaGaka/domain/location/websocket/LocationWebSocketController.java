@@ -6,18 +6,12 @@ import com.okagaka.OkaGaka.domain.location.dto.LocationDTO;
 import com.okagaka.OkaGaka.domain.location.service.LocationCacheService;
 import com.okagaka.OkaGaka.domain.user.entity.User;
 import com.okagaka.OkaGaka.domain.user.repository.UserRepository;
-<<<<<<< HEAD
 import org.springframework.security.core.Authentication;
-=======
->>>>>>> 5bfdb0df49bc80cd41843fa79b66f63a947500b5
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-<<<<<<< HEAD
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-=======
->>>>>>> 5bfdb0df49bc80cd41843fa79b66f63a947500b5
 import java.security.Principal;
 
 
