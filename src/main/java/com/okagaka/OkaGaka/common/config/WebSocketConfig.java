@@ -1,8 +1,10 @@
 package com.okagaka.OkaGaka.common.config;
 
 
+import com.okagaka.OkaGaka.common.security.CustomUserDetailsService;
 import io.jsonwebtoken.JwtException;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -12,11 +14,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.socket.config.annotation.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import com.okagaka.OkaGaka.common.security.JwtTokenProvider;
+import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
+
+import java.security.Principal;
+import java.util.List;
 
 import java.util.Collections;
 
@@ -26,6 +33,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer{
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+//    private final CustomUserDetailsService userDetailsService;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -35,7 +43,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer{
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws-location").setAllowedOrigins("*"); // .withSockJS();
+        registry.addEndpoint("/ws-location").setAllowedOrigins("*"); //.withSockJS();
+
     }
 
     @Override
@@ -45,65 +54,48 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer{
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-                // STOMP CONNECT 명령이 도착했을 떄만 인증 로직 수행
+                // 1. CONNECT 요청: JWT 인증 후 세션에 Principal 저장
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    String authToken = accessor.getFirstNativeHeader("Authorization");
+                    String token = accessor.getFirstNativeHeader("Authorization");
+                    if (token != null && token.startsWith("Bearer ")) {
+                        token = token.substring(7);
+                        if (jwtTokenProvider.validateToken(token)) {
+                            Long userId = jwtTokenProvider.getUserId(token);
+                            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                                    userId.toString(), null,
+                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                            );
 
-                    if (authToken != null && authToken.startsWith("Bearer")) {
-                        String jwt = authToken.substring(7);
+                            // 현재 메시지의 Principal 설정
+                            accessor.setUser(authentication);
 
-                        try{
-                            // 1. JWT 토큰 유효성 검사
-                            if (jwtTokenProvider.validateToken(jwt)){
-                                // 2. 토큰에서 사용자 ID 추출
-                                Long userId = jwtTokenProvider.getUserId(jwt);
-                                // 3. 사용자 인증 정보(Principal) 생성 및 세션에 설정
-                                // Spring Security의 Authentication 객체를 생성하여 세션에 연결합니다.
-                                // 여기서는 간단하게 userId를 Principal로 사용하며,
-                                // 'ROLE_USER'라는 기본 권한을 부여했습니다.
-                                // 실제 서비스에서는 UserDetailsService 등을 통해 UserDetails를 로드하고
-                                // 해당 사용자의 실제 권한 목록을 가져와 설정하는 것이 일반적입니다.
-                                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                                        userId,
-                                        null,
-                                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-                                );
-                                accessor.setUser(authentication); // STOMP 세션에 Principal 설정
+                            // WebSocket 세션 속성에 Principal 저장 (가장 중요!)
+                            // 이후의 SUBSCRIBE, SEND 요청에서 이 값을 사용하게 됩니다.
+                            accessor.getSessionAttributes().put("user", authentication);
 
-                                // 선택 사항: SecurityContextHolder에도 설정 (필요한 경우)
-                                // SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                            } else {
-                                // 4. 토큰이 유효하지 않은 경우: 연결 거부 또는 예외 발생
-                                // 예외를 던지면 클라이언트의 WebSocket 연결이 끊어집니다.
-                                System.err.println("Invalid JWT token received for Websocket connection.");
-                                throw new IllegalArgumentException("Invalid JWT token");
-
-                            }
-                        } catch (JwtException | IllegalArgumentException e) {
-                            // 토큰 파싱 실패, 만료 등 JWT 관련 예외 처리
-                            System.err.println("Error validating JWT token for WebSocket: " + e.getMessage());
-                            throw new IllegalArgumentException("Authentication failed: " + e.getMessage());
+                            System.out.println("✅ WebSocket JWT 인증 성공: userId=" + userId);
                         }
-                    } else {
-                        // Authorization 헤더가 없거나 형식이 잘못된 경우
-                        System.err.println("Authorization header missing or malformed for WebSocket connection.");
-                        throw new IllegalArgumentException("Authorization header is missing or malformed.");
                     }
                 }
-                // 연결 끊김(DISCONNECT) 명령 처리 (선택 사항)
-                // 클라이언트가 연결을 끊을 때 특정 로직을 수행해야 한다면 여기에 추가
-                else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
-                    // 예: 연결이 끊긴 사용자의 현재 위치 캐시를 제거하거나 로그 기록
-                    if (accessor.getUser() != null) {
-                        System.out.println("User " + accessor.getUser().getName() + " disconnected from WebSocket.");
-                        // cacheService.removeLocationByUserId(Long.parseLong(accessor.getUser().getName()));
+                // 2. 다른 모든 요청(SUBSCRIBE, SEND 등): 세션에서 Principal을 꺼내 현재 메시지에 설정
+                else if (accessor.getUser() == null && accessor.getSessionAttributes() != null) {
+                    // 세션에서 저장해 둔 인증 정보 가져오기
+                    Authentication authentication = (Authentication) accessor.getSessionAttributes().get("user");
+
+                    // 현재 메시지의 Principal로 설정
+                    if (authentication != null) {
+                        accessor.setUser(authentication);
                     }
                 }
 
-                return message; // 처리된 메시지를 다음 인터셉터 또는 메시지 핸들러로 전달
+                System.out.println("✅ preSend: command=" + accessor.getCommand() +
+                        ", principal=" + (accessor.getUser() != null ? accessor.getUser().getName() : "NULL"));
+
+                return message;
             }
         });
     }
+
+
 
 }

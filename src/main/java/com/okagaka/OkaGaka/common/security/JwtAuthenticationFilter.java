@@ -25,19 +25,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        // "/ws-location"으로 시작하는 모든 요청을 필터링하지 않음
+        return request.getServletPath().startsWith("/ws-location");
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String token = resolveToken(request);
 
-        if (token != null) {
-        }
+        // JWT 인증 처리
+        String token = resolveToken(request);
 
         if (token != null && jwtTokenProvider.validateToken((token))) {
             Long userId = jwtTokenProvider.getUserId(token);
-
             CustomUserDetails userDetails = userDetailsService.loadUserById(userId);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -57,3 +61,62 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 }
+
+//public class JwtAuthenticationFilter extends OncePerRequestFilter {
+//
+//    private final JwtTokenProvider jwtTokenProvider;
+//    private final CustomUserDetailsService userDetailsService;
+//
+//    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, CustomUserDetailsService userDetailsService) {
+//        this.jwtTokenProvider = jwtTokenProvider;
+//        this.userDetailsService = userDetailsService;
+//    }
+//
+//    @Override
+//    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+//        // "/ws-location"으로 시작하는 모든 요청을 필터링하지 않음
+//        return request.getServletPath().startsWith("/ws-location");
+//    }
+//
+//    @Override
+//    protected void doFilterInternal(
+//            HttpServletRequest request,
+//            HttpServletResponse response,
+//            FilterChain filterChain
+//    ) throws ServletException, IOException {
+//
+//        // WebSocket(STOMP) 경로는 인증 없이 통과
+//        String path = request.getRequestURI();
+//        if (path.startsWith("/ws-location")) {
+//            filterChain.doFilter(request, response);
+//            return;
+//        }
+//
+//        // JWT 인증 처리
+//        String token = resolveToken(request);
+//
+//        if (token != null) {
+//        }
+//
+//        if (token != null && jwtTokenProvider.validateToken((token))) {
+//            Long userId = jwtTokenProvider.getUserId(token);
+//
+//            CustomUserDetails userDetails = userDetailsService.loadUserById(userId);
+//
+//            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+//
+//            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+//            SecurityContextHolder.getContext().setAuthentication(authentication);
+//        }
+//
+//        filterChain.doFilter(request, response);
+//    }
+//
+//    private String resolveToken(HttpServletRequest request) {
+//        String bearer = request.getHeader("Authorization");
+//        if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
+//            return bearer.substring(7);
+//        }
+//        return null;
+//    }
+//}

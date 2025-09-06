@@ -147,7 +147,7 @@ public class ReservationService {
                         .build();
             }
 
-                // 카풀 가능성 체크(겹침이 있으면 카풀 가능성 판단private final int MAX_CARPOL_SIZE = 3; 대상만 추림)
+                // 카풀 가능성 체크(겹침이 있으면 카풀 가능성 판단)
                 List<Reservation> confirmedReservations = overlapping.stream()
                         .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED || r.getStatus() == ReservationStatus.CARPOOL)
                         .toList();
@@ -161,8 +161,14 @@ public class ReservationService {
 
                 // 카풀 가능성 판단
                 CarpoolCheckResult carpoolCheck  = tmapService.canCarpoolTogether(confirmedReservations, request);
-//                CarpoolCheckResult carpoolCheck = optimizeCarpool(confirmedReservations, request);
+
+                // ------------------------
+                // 최적 카풀 경로 탐색 (optimizeCarpool)
+                // ------------------------
+//                CarpoolService carpoolService = new CarpoolService(tmapService);
+//                CarpoolCheckResult carpoolCheck = carpoolService.optimizeCarpool(confirmedReservations, request);
                 System.out.println("canCarpool 결과: " + carpoolCheck );
+
                 if (carpoolCheck == null) {
                     throw new CustomException(ErrorCode.CARPOOL_NOT_POSSIBLE);
                 }

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Location Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<!--    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>-->
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        h1 { text-align: center; }
+        label { display: block; margin-top: 10px; }
+        input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { padding: 10px 15px; margin-top: 10px; cursor: pointer; }
+        #log { margin-top: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9; max-height: 200px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>WebSocket Location Test</h1>
+
+    <div>
+        <label for="jwtToken">JWT Token:</label>
+        <input type="text" id="jwtToken" placeholder="Enter your JWT token here">
+        <button onclick="connect()">Connect</button>
+    </div>
+
+    <div>
+        <label>Location Update:</label>
+        <button onclick="updateLocation()">Send Location</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+
+    <div>
+        <label>Received Messages:</label>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="log"></div>
+    </div>
+</div>
+
+<script>
+    let stompClient = null;
+    const WS_URL = 'ws://localhost:8080/ws-location';
+    const TOPIC_PREFIX = '/topic/group/';
+    const APP_PREFIX = '/app/location/update';
+
+    function log(message) {
+        const logElement = document.getElementById('log');
+        logElement.innerHTML += `<p>${new Date().toLocaleTimeString()} - ${message}</p>`;
+        logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    function connect() {
+        const token = document.getElementById('jwtToken').value;
+        if (!token) {
+            alert('Please enter a JWT token.');
+            return;
+        }
+
+        log("Connecting to WebSocket...");
+        const socket = new WebSocket(WS_URL);
+        stompClient = Stomp.over(socket);
+
+        // STOMP 연결 시 헤더에 JWT 토큰을 포함
+        stompClient.connect({ 'Authorization': 'Bearer ' + token },
+            function(frame) {
+                log('✅ Connected: ' + frame);
+
+                // 구독할 그룹 ID를 사용자에게 입력받거나, 테스트용으로 고정
+                const groupId = 1;
+                stompClient.subscribe(TOPIC_PREFIX + groupId, function(message) {
+                    const locationData = JSON.parse(message.body);
+                    log(`Received location update for group ${groupId}: User ${locationData.userId}, Lat: ${locationData.latitude}, Lng: ${locationData.longitude}`);
+                });
+            },
+            function(error) {
+                log('❌ Connection failed: ' + error);
+            }
+        );
+    }
+
+    function disconnect() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+            log("Disconnected.");
+        }
+    }
+
+    function updateLocation() {
+        if (stompClient && stompClient.connected) {
+            const locationData = {
+                latitude: 37.5665 + (Math.random() - 0.5) * 0.01,
+                longitude: 126.9780 + (Math.random() - 0.5) * 0.01
+                // userId와 groupId는 백엔드에서 자동으로 채워짐
+            };
+            stompClient.send(APP_PREFIX, {}, JSON.stringify(locationData));
+            log("Sent location update.");
+        } else {
+            log("Not connected. Please connect first.");
+        }
+    }
+
+    function clearLog() {
+        document.getElementById('log').innerHTML = '';
+    }
+
+<!--    // 초기 연결 시도-->
+<!--    document.addEventListener('DOMContentLoaded', () => {-->
+<!--        // 페이지 로드 시 바로 연결 시도하지 않고 버튼 클릭으로 시작-->
+<!--        document.querySelector('button').onclick = connect;-->
+<!--    });-->
+
+</script>
+</body>
+</html>
