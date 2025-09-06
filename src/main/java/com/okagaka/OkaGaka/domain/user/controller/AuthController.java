@@ -18,8 +18,20 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request) {
         System.out.println("요청 들어옴: name=" + request.getName() + ", phone=" + request.getPhoneNumber());
-        String token = userService.login(request.getName(), request.getPhoneNumber());
-        return ResponseEntity.ok(ApiResponse.success(new LoginResponse(token)));
+//        String token = userService.login(request.getName(), request.getPhoneNumber());
+//        return ResponseEntity.ok(ApiResponse.success(new LoginResponse(token)));
+        // 1. UserService로부터 3가지 정보가 담긴 LoginResult 객체를 받음
+        UserService.LoginResult loginResult = userService.login(request.getName(), request.getPhoneNumber());
+
+        // 2. LoginResult 객체의 정보로 최종 응답 객체인 LoginResponse를 생성
+        LoginResponse response = new LoginResponse(
+                loginResult.token(),
+                loginResult.userId(),
+                loginResult.groupId()
+        );
+
+        // 3. 성공 응답 반환
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
 
