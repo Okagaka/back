@@ -43,6 +43,7 @@ public class ReservationService {
     private final TmapService tmapService;
     private final TmapGeocodingClient tmapGeocodingClient;
     private final NotificationService notificationService;
+    private final CarpoolService carpoolService;
 
     private final int MAX_CARPOL_SIZE = 3;
 
@@ -89,14 +90,14 @@ public class ReservationService {
                     ", startY=" + departureCoord.getLat() +
                     ", endX=" + destinationCoord.getLon() +
                     ", endY=" + destinationCoord.getLat() +
-                    ", arrivalTime=" + request.getArrivalTime());
+                    ", arrivalTime=" + request.getDesiredArrivalTime());
 
 
             // 출발 시간 계산
             Map<String, Object> departureInfo = tmapService.calculateDepartureTime(
                     departureCoord,
                     destinationCoord,
-                    request.getArrivalTime(),
+                    request.getDesiredArrivalTime(),
                     request.getDate()
             );
 
@@ -104,7 +105,7 @@ public class ReservationService {
             int totalTimeSec = (int) departureInfo.get("totalTime"); // totalTimeInSeconds
             System.out.println("departureDateTime: " + departureDateTime + ", totalTime: " + totalTimeSec);
 
-            LocalDateTime arrivalDateTime = request.getDate().atTime(request.getArrivalTime()); // 요청자의 도착 시간
+            LocalDateTime arrivalDateTime = request.getDate().atTime(request.getDesiredArrivalTime()); // 요청자의 도착 시간
             System.out.println("arrivalDateTime: " + arrivalDateTime);
 
             // 가족 내 시간 겹침 조회
@@ -129,6 +130,7 @@ public class ReservationService {
                                 .title(request.getTitle())
                                 .departureDateTime(departureDateTime)
                                 .arrivalDateTime(arrivalDateTime)
+                                .desiredArrivalTime(arrivalDateTime)
                                 .departureLatitude(Double.parseDouble(departureCoord.getLat()))
                                 .departureLongitude(Double.parseDouble(departureCoord.getLon()))
                                 .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
@@ -159,35 +161,46 @@ public class ReservationService {
                     throw new CustomException(ErrorCode.CARPOOL_CAPACITY_EXCEEDED);
                 }
 
-                // 카풀 가능성 판단
-                CarpoolCheckResult carpoolCheck  = tmapService.canCarpoolTogether(confirmedReservations, request);
+                // 카풀 가능성 판단(삭제 예정)
+//                CarpoolCheckResult carpoolCheck  = tmapService.canCarpoolTogether(confirmedReservations, request);
 
                 // ------------------------
                 // 최적 카풀 경로 탐색 (optimizeCarpool)
                 // ------------------------
 //                CarpoolService carpoolService = new CarpoolService(tmapService);
-//                CarpoolCheckResult carpoolCheck = carpoolService.optimizeCarpool(confirmedReservations, request);
+                CarpoolCheckResult carpoolCheck = carpoolService.optimizeCarpool(confirmedReservations, request);
                 System.out.println("canCarpool 결과: " + carpoolCheck );
 
                 if (carpoolCheck == null) {
                     throw new CustomException(ErrorCode.CARPOOL_NOT_POSSIBLE);
                 }
 
-                // 요청자 출발 시간 재계산
-                LocalDateTime calculatedDepartureDateTime = arrivalDateTime.minusSeconds(carpoolCheck.getNewReservationTravelTimeSec());
+//                // 요청자 출발 시간 재계산
+//                LocalDateTime calculatedDepartureDateTime = arrivalDateTime.minusSeconds(carpoolCheck.getNewReservationTravelTimeSec());
+
+                // CarpoolCheckResult에서 명확하게 분리된 정보를 사용
+                LocalDateTime newDepartureTime = carpoolCheck.getNewReservationDepartureTime();
+                LocalDateTime newArrivalTime = carpoolCheck.getNewReservationArrivalTime();
+                int newTravelTime = carpoolCheck.getNewReservationTravelTimeSec();
+
+            // 요청 DTO에서 날짜와 희망 도착 시간을 직접 가져와 합치기
+            LocalDateTime desiredArrivalDateTime = request.getDate().atTime(request.getDesiredArrivalTime());
+
+
 
                 // 요청자 예약을 PENDING으로 저장
                 Reservation pendingReservation = reservationRepository.save(
                         Reservation.builder()
                                 .user(user)
                                 .title(request.getTitle())
-                                .departureDateTime(calculatedDepartureDateTime)
-                                .arrivalDateTime(arrivalDateTime)
+                                .departureDateTime(newDepartureTime)
+                                .arrivalDateTime(newArrivalTime) // 사용자가 요청한 도착 시간
+                                .desiredArrivalTime(desiredArrivalDateTime) // 사용자가 희망한 도착 시간
                                 .departureLatitude(Double.parseDouble(departureCoord.getLat()))
                                 .departureLongitude(Double.parseDouble(departureCoord.getLon()))
                                 .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
                                 .destinationLongitude(Double.parseDouble(destinationCoord.getLon()))
-                                .travelTimeSec(carpoolCheck.getNewReservationTravelTimeSec())
+                                .travelTimeSec(newTravelTime) // 계산된 순수 이동 시간
                                 .status(ReservationStatus.PENDING)
                                 .build()
                 );
@@ -199,13 +212,14 @@ public class ReservationService {
                 // 기존 예약자 각각에게 카풀 제안
                 for (Reservation existing : confirmedReservations) {
 
-                    LocalDateTime updatedDeparture = updatedDepartureTimes.get(existing.getId()); // 기존 예약 업데이트된 시간
+                    LocalDateTime proposedTime = updatedDepartureTimes.get(existing.getId()); // 기존 예약 업데이트된 시간
 
                     // 기존 예약자의 출발 시간은 아직 확정하지 않고, 제안 정보만 저장
                     CarpoolProposal proposal = CarpoolProposal.builder()
                             .fromReservation(existing)
                             .toReservation(pendingReservation)
-                            .proposedDepartureTime(updatedDeparture)
+                            .proposedDepartureTime(proposedTime)
+//                            .계산된 도착 시간
                             .status(ProposalStatus.PENDING)
                             .build();
                     carpoolProposalRepository.save(proposal);
@@ -224,7 +238,8 @@ public class ReservationService {
                 return ReservationResponse.builder()
                         .reservationId(pendingReservation.getId())
                         .status(pendingReservation.getStatus())
-                        .calculatedDepartureTime(calculatedDepartureDateTime)
+                        .calculatedDepartureTime(newDepartureTime)
+//                        .카풀로 계산된 도착 시간
                         .message("카풀 제안이 기존 예약자에게 전송되었습니다. 승인을 기다리는 중입니다.")
                         .build();
 
@@ -271,7 +286,7 @@ public class ReservationService {
 
 
     /**
-     * 카풀 제안 수락
+     * 카풀 제안 수락(도착 시간 수정된 것도 알려줘야 함 desiredArrivalTime vs ArrivalDateTime)
      */
     @Transactional
     public ReservationResponse acceptCarpoolProposal(Long proposalId, Long userId) {

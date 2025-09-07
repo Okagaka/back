@@ -268,94 +268,94 @@ public class TmapService {
 
     // 카풀 가능 여부
     // boolean canCarpool = tmapService.canCarpoolTogether(confirmedReservations, request);
-    public CarpoolCheckResult canCarpoolTogether(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
-
-        // 1. 좌표 수집
-        List<Coordinate> origins = new ArrayList<>();
-        List<Coordinate> destinations = new ArrayList<>();
-
-        // 기존 예약
-        for (Reservation existing : confirmedReservations) {
-            origins.add(new Coordinate(
-                    String.valueOf(existing.getDepartureLatitude()),
-                    String.valueOf(existing.getDepartureLongitude())
-            ));
-            destinations.add(new Coordinate(String.valueOf(
-                    existing.getDestinationLatitude()),
-                    String.valueOf(existing.getDestinationLongitude())
-            ));
-        }
-
-        // 신규 예약
-        Coordinate newDeparture = tmapGeocodingClient.getCoordinates(
-                newRequest.getDepartureCityDo(),
-                newRequest.getDepartureGuGun(),
-                newRequest.getDepartureDong(),
-                newRequest.getDepartureBunji()
-        );
-        Coordinate newDestination = tmapGeocodingClient.getCoordinates(
-                newRequest.getDestinationCityDo(),
-                newRequest.getDestinationGuGun(),
-                newRequest.getDestinationDong(),
-                newRequest.getDestinationBunji()
-        );
-
-        origins.add(newDeparture);
-        destinations.add(newDestination);
-
-        // 2. TMAP 경로 매트릭스 호출
-        List<MatrixRouteInfoDTO> routeInfos = tmapRouteMatrixService.estimateOptimizedTravelTime(origins, destinations);
-
-        int maxDifferenceSec = 30 * 60;
-        Map<Long, LocalDateTime> updatedDepartureTimes = new HashMap<>();
-
-        // 3.기존 예약 비교
-        for (Reservation existing : confirmedReservations) {
-            MatrixRouteInfoDTO match = routeInfos.stream()
-                    .filter(r ->
-                            Double.parseDouble(r.getOrigin().getLat()) == existing.getDepartureLatitude() &&
-                                    Double.parseDouble(r.getOrigin().getLon()) == existing.getDepartureLongitude() &&
-                                    Double.parseDouble(r.getDestination().getLat()) == existing.getDestinationLatitude() &&
-                                    Double.parseDouble(r.getDestination().getLon()) == existing.getDestinationLongitude()
-                    )
-                    .findFirst()
-                    .orElse(null);
-
-            if (match == null) {
-                throw new RuntimeException("해당 예약에 대한 매트릭스 결과를 찾을 수 없음");
-            }
-
-            // 기존 예약과 30분 이상 차이 나면 카풀 불가
-            long travelDiff = match.getDuration() - existing.getTravelTimeSec();
-            if (Math.abs(travelDiff) > maxDifferenceSec) {
-                return null; // 30분 이상 차이 → 카풀 불가
-            }
-
-            // 기존 예약 출발시간 재계산
-            LocalDateTime newDepartureTime = existing.getArrivalDateTime().minusSeconds(match.getDuration());
-            updatedDepartureTimes.put(existing.getId(), newDepartureTime);
-
-            // 새로 계산된 소요 시간 저장 (승인 전까지 임시)
-            existing.setRecalculatedTravelTimeSec(match.getDuration());
-
-
-        }
-
-        // 4. 신규 예약도 같은 방식으로 체크
-        MatrixRouteInfoDTO newMatch = routeInfos.stream()
-                .filter(r ->
-                        r.getOrigin().equals(newDeparture) &&
-                                r.getDestination().equals(newDestination)
-                )
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("신규 예약에 대한 매트릭스 결과를 찾을 수 없음"));
-
-//        int newTravelTimeSec = newMatch.getDuration();
-//        if (newTravelTimeSec > newRequest.getAllowedTravelTimeSec()) {
-//            return false;
+//    public CarpoolCheckResult canCarpoolTogether(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
+//
+//        // 1. 좌표 수집
+//        List<Coordinate> origins = new ArrayList<>();
+//        List<Coordinate> destinations = new ArrayList<>();
+//
+//        // 기존 예약
+//        for (Reservation existing : confirmedReservations) {
+//            origins.add(new Coordinate(
+//                    String.valueOf(existing.getDepartureLatitude()),
+//                    String.valueOf(existing.getDepartureLongitude())
+//            ));
+//            destinations.add(new Coordinate(String.valueOf(
+//                    existing.getDestinationLatitude()),
+//                    String.valueOf(existing.getDestinationLongitude())
+//            ));
 //        }
-
-        return new CarpoolCheckResult(updatedDepartureTimes, newMatch.getDuration());
+//
+//        // 신규 예약
+//        Coordinate newDeparture = tmapGeocodingClient.getCoordinates(
+//                newRequest.getDepartureCityDo(),
+//                newRequest.getDepartureGuGun(),
+//                newRequest.getDepartureDong(),
+//                newRequest.getDepartureBunji()
+//        );
+//        Coordinate newDestination = tmapGeocodingClient.getCoordinates(
+//                newRequest.getDestinationCityDo(),
+//                newRequest.getDestinationGuGun(),
+//                newRequest.getDestinationDong(),
+//                newRequest.getDestinationBunji()
+//        );
+//
+//        origins.add(newDeparture);
+//        destinations.add(newDestination);
+//
+//        // 2. TMAP 경로 매트릭스 호출
+//        List<MatrixRouteInfoDTO> routeInfos = tmapRouteMatrixService.estimateOptimizedTravelTime(origins, destinations);
+//
+//        int maxDifferenceSec = 30 * 60;
+//        Map<Long, LocalDateTime> updatedDepartureTimes = new HashMap<>();
+//
+//        // 3.기존 예약 비교
+//        for (Reservation existing : confirmedReservations) {
+//            MatrixRouteInfoDTO match = routeInfos.stream()
+//                    .filter(r ->
+//                            Double.parseDouble(r.getOrigin().getLat()) == existing.getDepartureLatitude() &&
+//                                    Double.parseDouble(r.getOrigin().getLon()) == existing.getDepartureLongitude() &&
+//                                    Double.parseDouble(r.getDestination().getLat()) == existing.getDestinationLatitude() &&
+//                                    Double.parseDouble(r.getDestination().getLon()) == existing.getDestinationLongitude()
+//                    )
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            if (match == null) {
+//                throw new RuntimeException("해당 예약에 대한 매트릭스 결과를 찾을 수 없음");
+//            }
+//
+//            // 기존 예약과 30분 이상 차이 나면 카풀 불가
+//            long travelDiff = match.getDuration() - existing.getTravelTimeSec();
+//            if (Math.abs(travelDiff) > maxDifferenceSec) {
+//                return null; // 30분 이상 차이 → 카풀 불가
+//            }
+//
+//            // 기존 예약 출발시간 재계산
+//            LocalDateTime newDepartureTime = existing.getArrivalDateTime().minusSeconds(match.getDuration());
+//            updatedDepartureTimes.put(existing.getId(), newDepartureTime);
+//
+//            // 새로 계산된 소요 시간 저장 (승인 전까지 임시)
+//            existing.setRecalculatedTravelTimeSec(match.getDuration());
+//
+//
+//        }
+//
+//        // 4. 신규 예약도 같은 방식으로 체크
+//        MatrixRouteInfoDTO newMatch = routeInfos.stream()
+//                .filter(r ->
+//                        r.getOrigin().equals(newDeparture) &&
+//                                r.getDestination().equals(newDestination)
+//                )
+//                .findFirst()
+//                .orElseThrow(() -> new RuntimeException("신규 예약에 대한 매트릭스 결과를 찾을 수 없음"));
+//
+////        int newTravelTimeSec = newMatch.getDuration();
+////        if (newTravelTimeSec > newRequest.getAllowedTravelTimeSec()) {
+////            return false;
+////        }
+//
+//        return new CarpoolCheckResult(updatedDepartureTimes, newMatch.getDuration());
 
 //        return true; // 모든 예약이 허용 시간 이내 → 카풀 가능
 
@@ -406,6 +406,6 @@ public class TmapService {
 //
 //
 //        return true; // 실제 API 연동 필요
-    }
+//    }
 
 }
