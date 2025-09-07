@@ -66,6 +66,7 @@ public class SecurityConfig {
                                 "/stomp_test.html",
                                 "/api/signup/**",
                                 "/api/auth/login",
+                                "/api/user-face-embedding-images",
                                 "/api/stt/*",
 //                                "/sockjs-node/**",
                                 "/ws-location/**", // 💡 이 경로를 여기에 포함시키세요.

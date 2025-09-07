@@ -58,6 +58,9 @@ public class Reservation extends BaseTimeEntity {
     @Column
     private LocalDateTime arrivalDateTime;
 
+    @Column
+    private LocalDateTime desiredArrivalTime; // 희망 도착 시간
+
     // 출발지
 //    @Column
 //    private String departure;

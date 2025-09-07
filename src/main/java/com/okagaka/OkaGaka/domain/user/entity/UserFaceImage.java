@@ -7,6 +7,7 @@ import lombok.*;
 @Entity
 @Table(name = "user_face_image")
 @Getter
+//@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -21,5 +22,12 @@ public class UserFaceImage extends BaseTimeEntity {
 
     @Column(name = "image_url", length = 255, nullable = false)
     private String imageUrl;
+
+    @Column(name = "embedding_image_url", length = 255)
+    private String embeddingImageUrl;
+
+    public void updateEmbeddingImageUrl(String embeddingImageUrl) {
+        this.embeddingImageUrl = embeddingImageUrl;
+    }
 
 }

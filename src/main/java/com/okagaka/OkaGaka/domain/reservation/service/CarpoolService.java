@@ -7,6 +7,11 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.time.Duration;
 
 import com.okagaka.OkaGaka.domain.reservation.entity.Reservation;
 import com.okagaka.OkaGaka.domain.reservation.dto.ReservationRequest;
@@ -26,130 +31,257 @@ public class CarpoolService {
     private final TmapGeocodingClient tmapGeocodingClient;
     private final TmapRouteMatrixService tmapRouteMatrixService;
 
-//    public CarpoolCheckResult optimizeCarpool(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
-//
-//        // 새 예약도 포함
-//
-//        // 신규 예약
-//        Coordinate newDeparture = tmapGeocodingClient.getCoordinates(
-//                newRequest.getDepartureCityDo(),
-//                newRequest.getDepartureGuGun(),
-//                newRequest.getDepartureDong(),
-//                newRequest.getDepartureBunji()
-//        );
-//        Coordinate newDestination = tmapGeocodingClient.getCoordinates(
-//                newRequest.getDestinationCityDo(),
-//                newRequest.getDestinationGuGun(),
-//                newRequest.getDestinationDong(),
-//                newRequest.getDestinationBunji()
-//        );
-//
-//        Reservation newReservation = Reservation.builder()
-//                .departureLatitude(Double.parseDouble(newDeparture.getLat()))
-//                .departureLongitude(Double.parseDouble(newDeparture.getLon()))
-//                .destinationLatitude(Double.parseDouble(newDestination.getLat()))
-//                .destinationLongitude(Double.parseDouble(newDestination.getLon()))
-//                .build();
-//
-//        List<Reservation> allReservations = new ArrayList<>(confirmedReservations);
-//        allReservations.add(newReservation);
-//
-//        // 1. 각 예약에서 dep, des 좌표 객체 생성
-//        List<Point> points = new ArrayList<>();
-//        Map<Reservation, Point> depMap = new HashMap<>();
-//        Map<Reservation, Point> desMap = new HashMap<>();
-//
-//        for (Reservation r : allReservations) {
-//            Point dep = new Point(r, true, r.getDepartureLatitude(), r.getDepartureLongitude());
-//            Point des = new Point(r, false, r.getDestinationLatitude(), r.getDestinationLongitude());
-//            points.add(dep);
-//            points.add(des);
-//            depMap.put(r, dep);
-//            desMap.put(r, des);
-//        }
-//
-//        // 2. 유효 경로 후보 생성 (DFS + 백트래킹)
-//        List<List<Point>> allValidPaths = new ArrayList<>();
-//        generatePaths(new ArrayList<>(), points, depMap, desMap, allValidPaths);
-//
-//        if (allValidPaths.isEmpty()) {
-//            return null; // 카풀 불가
-//        }
-//
-//        // 3. TMAP 경로 매트릭스 API 호출 -> durationMatrix 생성
-////        int minTimeSec = Integer.MAX_VALUE;
-////        List<Point> optimalPath = null;
-////        for (List<Point> pathCandidate : allValidPaths) {
-////            int travelTimeSec = tmapService.calculateMultiRouteTravelTime(pathCandidate);
-////            if (travelTimeSec < minTimeSec) {
-////                minTimeSec = travelTimeSec;
-////                optimalPath = pathCandidate;
-////            }
-////        }
-//
-//        // 3. TMAP 경로 매트릭스 API 호출 -> durationMatrix 생성
-//        List<Coordinate> coords = points.stream()
-//                .map(p -> new Coordinate(p.getLat(), p.getLon()))
-//                .toList();
-//
-//        List<MatrixRouteInfoDTO> routeInfos = tmapRouteMatrixService.estimateOptimizedTravelTime(coords, coords);
-//
-//        // durationMatrix 구성
-//        final int INF = 1_000_000_000;
-//        int n = coords.size();
-//        int[][] durationMatrix = new int[n][n];
-//        for (int i = 0; i < n; i++) Arrays.fill(durationMatrix[i], INF);
-//        for (MatrixRouteInfoDTO dto : routeInfos) {
-//            durationMatrix[dto.getOriginIndex()][dto.getDestinationIndex()] = dto.getDuration();
-//        }
-//
-//        // 4. 모든 유효 경로 후보 평가
-////        int minTimeSec = Integer.MAX_VALUE;
-////        List<Point> optimalPath = null;
-//
-//
-//        Map<Point, Integer> indexMap = new HashMap<>();
-//        for (int i = 0; i < points.size(); i++) indexMap.put(points.get(i), i);
-//
-//        // 4. 모든 경로 후보 평가
-//        long minTimeSec = Long.MAX_VALUE;
+    public CarpoolCheckResult optimizeCarpool(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
+
+        // 새 예약도 포함
+
+        // 신규 예약
+        Coordinate newDeparture = tmapGeocodingClient.getCoordinates(
+                newRequest.getDepartureCityDo(),
+                newRequest.getDepartureGuGun(),
+                newRequest.getDepartureDong(),
+                newRequest.getDepartureBunji()
+        );
+        Coordinate newDestination = tmapGeocodingClient.getCoordinates(
+                newRequest.getDestinationCityDo(),
+                newRequest.getDestinationGuGun(),
+                newRequest.getDestinationDong(),
+                newRequest.getDestinationBunji()
+        );
+
+        // DTO의 날짜와 시간을 합쳐 LocalDateTime 생성
+        LocalDateTime desiredArrivalDateTime = newRequest.getDate().atTime(newRequest.getDesiredArrivalTime());
+
+        Reservation newReservation = Reservation.builder()
+                .departureLatitude(Double.parseDouble(newDeparture.getLat()))
+                .departureLongitude(Double.parseDouble(newDeparture.getLon()))
+                .destinationLatitude(Double.parseDouble(newDestination.getLat()))
+                .destinationLongitude(Double.parseDouble(newDestination.getLon()))
+                .desiredArrivalTime(desiredArrivalDateTime)
+                .build();
+
+        List<Reservation> allReservations = new ArrayList<>(confirmedReservations);
+        allReservations.add(newReservation);
+
+        // 1. 각 예약에서 dep, des 좌표 객체 생성
+        List<Point> points = new ArrayList<>();
+        Map<Reservation, Point> depMap = new HashMap<>();
+        Map<Reservation, Point> desMap = new HashMap<>();
+
+        for (Reservation r : allReservations) {
+            Point dep = new Point(r, true, r.getDepartureLatitude(), r.getDepartureLongitude());
+            Point des = new Point(r, false, r.getDestinationLatitude(), r.getDestinationLongitude());
+            points.add(dep);
+            points.add(des);
+            depMap.put(r, dep);
+            desMap.put(r, des);
+        }
+
+        // 2. 유효 경로 후보 생성 (DFS + 백트래킹)
+        List<List<Point>> allValidPaths = new ArrayList<>();
+        generatePaths(new ArrayList<>(), points, depMap, desMap, allValidPaths);
+
+        if (allValidPaths.isEmpty()) {
+            return null; // 카풀 불가
+        }
+
+        // 3. TMAP 경로 매트릭스 API 호출 -> durationMatrix 생성
+//        int minTimeSec = Integer.MAX_VALUE;
 //        List<Point> optimalPath = null;
-//
 //        for (List<Point> pathCandidate : allValidPaths) {
-//            if (pathCandidate == null || pathCandidate.size() < 2) continue;
-//            long total = 0L;
-//            boolean pruned = false;
-//
-//            for (int i = 0; i < pathCandidate.size() - 1; i++) {
-//                Integer fromIdx = indexMap.get(pathCandidate.get(i));
-//                Integer toIdx   = indexMap.get(pathCandidate.get(i + 1));
-//                if (fromIdx == null || toIdx == null) { pruned = true; break; }
-//
-//                int d = durationMatrix[fromIdx][toIdx];
-//                if (d == INF) { pruned = true; break; }
-//
-//                total += d;
-//                if (total >= minTimeSec) { pruned = true; break; }
-//            }
-//
-//            if (!pruned && total < minTimeSec) {
-//                minTimeSec = total;
+//            int travelTimeSec = tmapService.calculateMultiRouteTravelTime(pathCandidate);
+//            if (travelTimeSec < minTimeSec) {
+//                minTimeSec = travelTimeSec;
 //                optimalPath = pathCandidate;
 //            }
 //        }
-//
-//        if (optimalPath == null) {
-//            return null;
-//        }
-//
-//        // 5. 역방향 누적 계산으로 출발 시간 결정
-//
-//
-//
-//
-//
-//
-//    }
+
+        // 3. TMAP 경로 매트릭스 API 호출 -> durationMatrix 생성
+        List<Coordinate> coords = points.stream()
+                .map(p -> new Coordinate(
+                        String.valueOf(p.getLat()),
+                        String.valueOf(p.getLon())
+                ))
+                .toList();
+
+        List<MatrixRouteInfoDTO> routeInfos = tmapRouteMatrixService.estimateOptimizedTravelTime(coords, coords);
+
+        // durationMatrix 구성
+        final int INF = 1_000_000_000;
+        int n = coords.size();
+        int[][] durationMatrix = new int[n][n];
+        for (int i = 0; i < n; i++) Arrays.fill(durationMatrix[i], INF);
+        for (MatrixRouteInfoDTO dto : routeInfos) {
+            durationMatrix[dto.getOriginIndex()][dto.getDestinationIndex()] = dto.getDuration();
+        }
+
+        // 4. 모든 유효 경로 후보 평가
+//        int minTimeSec = Integer.MAX_VALUE;
+//        List<Point> optimalPath = null;
+
+
+        Map<Point, Integer> indexMap = new HashMap<>();
+        for (int i = 0; i < points.size(); i++) indexMap.put(points.get(i), i);
+
+        // 4. 모든 경로 후보 평가
+        long minTimeSec = Long.MAX_VALUE;
+        List<Point> optimalPath = null;
+
+        for (List<Point> pathCandidate : allValidPaths) {
+            if (pathCandidate == null || pathCandidate.size() < 2) continue;
+            long total = 0L;
+            boolean pruned = false;
+
+            for (int i = 0; i < pathCandidate.size() - 1; i++) {
+                Integer fromIdx = indexMap.get(pathCandidate.get(i));
+                Integer toIdx   = indexMap.get(pathCandidate.get(i + 1));
+                if (fromIdx == null || toIdx == null) { pruned = true; break; }
+
+                int d = durationMatrix[fromIdx][toIdx];
+                if (d == INF) { pruned = true; break; }
+
+                total += d;
+                if (total >= minTimeSec) { pruned = true; break; }
+            }
+
+            if (!pruned && total < minTimeSec) {
+                minTimeSec = total;
+                optimalPath = pathCandidate;
+            }
+        }
+
+        if (optimalPath == null) {
+            return null;
+        }
+
+        // 5. 역방향 누적 계산으로 모든 참여자의 출발/도착 시간 계산
+        Map<Point, LocalDateTime> arrivalTimesAtPoints = calculateArrivalTimes(optimalPath, durationMatrix, indexMap, desMap);
+
+        // 이제 departureTimes 맵에는 각 예약별로 계산된 출발 시간이 들어있습니다.
+        // 이 결과를 포함하여 CarpoolCheckResult 객체를 생성하고 반환하면 됩니다.
+        System.out.println("계산된 최적 경로: " + optimalPath);
+        System.out.println("계산된 출발 시간: " + arrivalTimesAtPoints);
+
+        // 6. 결과를 CarpoolCheckResult 형식에 맞게 가공
+        return createCarpoolCheckResult(optimalPath, newReservation, arrivalTimesAtPoints, minTimeSec);
+
+
+    }
+
+    /**
+     * 계산 결과를 바탕으로 최종 CarpoolCheckResult 객체를 생성하는 헬퍼 메서드
+     */
+    private CarpoolCheckResult createCarpoolCheckResult(List<Point> optimalPath,
+                                                        Reservation newReservation,
+                                                        Map<Point, LocalDateTime> arrivalTimesAtPoints,
+                                                        long totalTravelTime) {
+
+        LocalDateTime newReservationDepartureTime = null;
+        LocalDateTime newReservationArrivalTime = null;
+        Map<Long, LocalDateTime> updatedDepartureTimes = new HashMap<>();
+
+        for (Point p : optimalPath) {
+            Reservation r = p.getReservation();
+
+            // 신규 예약자인 경우 (ID가 없거나, newReservation 객체와 동일)
+            // 참고: newReservation은 아직 DB에 저장 전이라 id가 null입니다.
+            if (r.getId() == null) {
+                if (p.isDeparture()) {
+                    newReservationDepartureTime = arrivalTimesAtPoints.get(p);
+                } else {
+                    newReservationArrivalTime = arrivalTimesAtPoints.get(p);
+                }
+            }
+            // 기존 예약자인 경우
+            else if (p.isDeparture()) {
+                updatedDepartureTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
+            }
+        }
+
+        // 신규 예약자의 순수 이동 시간 계산
+        int newReservationTravelTimeSec = (int) Duration.between(
+                newReservationDepartureTime, newReservationArrivalTime
+        ).getSeconds();
+
+        return new CarpoolCheckResult(
+                optimalPath,
+                newReservationDepartureTime,
+                newReservationArrivalTime,
+                newReservationTravelTimeSec,
+                updatedDepartureTimes,
+                totalTravelTime
+        );
+    }
+
+    /**
+     * 5. 역방향 누적 계산으로 출발 시간을 결정
+     * @param optimalPath 최적 경로
+     * @param durationMatrix 지점 간 이동 시간 행렬
+     * @param indexMap Point 객체와 durationMatrix의 인덱스를 매핑
+     * @param desMap Reservation과 도착지 Point를 매핑
+     * @return 각 Reservation별 출발 시간을 담은 Map
+     */
+    private Map<Point, LocalDateTime> calculateArrivalTimes(
+            List<Point> optimalPath,
+            int[][] durationMatrix,
+            Map<Point, Integer> indexMap,
+            Map<Reservation, Point> desMap) {
+
+        // 결과(각 지점의 도착 시간)를 저장할 Map
+        Map<Point, LocalDateTime> arrivalTimesAtPoints = new HashMap<>();
+
+        // 1. 기준 시간 설정: 경로의 가장 마지막 지점 도착 시간 설정
+        Point lastPoint = optimalPath.get(optimalPath.size() - 1);
+        Reservation lastReservation = lastPoint.getReservation();
+        // 실제로는 Reservation 객체에 저장된 desiredArrivalTime을 사용해야 합니다.
+        // 여기서는 예시로 현재 시간을 기준으로 하지만, 실제로는 아래와 같이 가져와야 합니다.
+         LocalDateTime lastArrivalTime = lastReservation.getDesiredArrivalTime();
+//        LocalDateTime lastArrivalTime = LocalDateTime.now(); // <<-- 이 부분을 실제 희망 도착 시간으로 변경!
+        arrivalTimesAtPoints.put(lastPoint, lastArrivalTime);
+
+
+        // 2. 역방향으로 순회하며 각 지점의 도착 시간 계산
+        for (int i = optimalPath.size() - 2; i >= 0; i--) {
+            Point currentPoint = optimalPath.get(i);
+            Point nextPoint = optimalPath.get(i + 1);
+
+            // currentPoint -> nextPoint 로의 이동 시간 (초)
+            int travelDurationSec = durationMatrix[indexMap.get(currentPoint)][indexMap.get(nextPoint)];
+
+            // 다음 지점의 도착 시간에서 이동 시간을 빼서 현재 지점의 도착 시간을 계산
+            LocalDateTime currentPointArrivalTime = arrivalTimesAtPoints.get(nextPoint).minusSeconds(travelDurationSec);
+
+            // 3. 희망 도착 시간 보정: 만약 현재 지점이 누군가의 '목적지'라면
+            if (currentPoint.isDestination()) {
+                Reservation reservation = currentPoint.getReservation();
+                 LocalDateTime desired = reservation.getDesiredArrivalTime(); // <<-- 실제 희망 도착 시간
+//                LocalDateTime desired = LocalDateTime.now().minusMinutes(10); // <<-- 예시용 시간
+
+                // 계산된 도착 시간이 희망 도착 시간보다 늦다면, 희망 도착 시간으로 조정 (더 이른 시간으로)
+                if (currentPointArrivalTime.isAfter(desired)) {
+                    currentPointArrivalTime = desired;
+                }
+            }
+
+            arrivalTimesAtPoints.put(currentPoint, currentPointArrivalTime);
+        }
+
+        // 4. 최종 결과(예약별 출발 시간) 정리
+        Map<Reservation, LocalDateTime> departureTimesByReservation = new HashMap<>();
+        for (Reservation reservation : desMap.keySet()) { // 모든 예약에 대해
+            // 예약에 해당하는 '출발지' Point를 찾아야 합니다.
+            // 이 예제에서는 depMap이 이 메서드에 없으므로, optimalPath에서 직접 찾습니다.
+            for(Point p : optimalPath){
+                if(p.isDeparture() && p.getReservation().equals(reservation)){
+                    departureTimesByReservation.put(reservation, arrivalTimesAtPoints.get(p));
+                    break;
+                }
+            }
+        }
+
+//        return departureTimesByReservation;
+        return arrivalTimesAtPoints;
+    }
 
     // DPS + 백트래킹
     private void generatePaths(List<Point> currentPath, List<Point> remainingPoints,
