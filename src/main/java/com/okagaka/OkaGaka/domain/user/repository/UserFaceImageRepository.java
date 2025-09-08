@@ -7,4 +7,6 @@ import java.util.List;
 public interface UserFaceImageRepository extends JpaRepository<UserFaceImage, Long> {
     // 특정 사용자 ID로 이미지 목록 조회
     List<UserFaceImage> findByUserId(Long userId);
+
+    List<UserFaceImage> findAllById(Iterable<Long> ids);
 }

@@ -15,7 +15,8 @@ public class SignupCompleteResponse {
     private Long userId;
     private String userName;
     private String phoneNumber;
-    private List<String> imageUrls;
+//    private List<String> imageUrls;
+    private List<FaceImageInfo> faceImages;
     private Long familyId;
 
     private Long zoneId;
