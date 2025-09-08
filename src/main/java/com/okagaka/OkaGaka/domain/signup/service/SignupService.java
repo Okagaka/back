@@ -6,9 +6,7 @@ import com.okagaka.OkaGaka.common.external.tmap.Coordinate;
 import com.okagaka.OkaGaka.common.s3.S3Service;
 import com.okagaka.OkaGaka.domain.familygroup.entity.FamilyGroup;
 import com.okagaka.OkaGaka.domain.familygroup.repository.FamilyGroupRepository;
-import com.okagaka.OkaGaka.domain.signup.dto.FamilyCreateResponse;
-import com.okagaka.OkaGaka.domain.signup.dto.FamilySearchResponse;
-import com.okagaka.OkaGaka.domain.signup.dto.ZoneRequest;
+import com.okagaka.OkaGaka.domain.signup.dto.*;
 import com.okagaka.OkaGaka.domain.signup.entity.SignupTemp;
 import com.okagaka.OkaGaka.domain.signup.entity.TempZone;
 import com.okagaka.OkaGaka.domain.signup.repository.SignupTempRepository;
@@ -21,8 +19,6 @@ import com.okagaka.OkaGaka.domain.vehicle.entity.Vehicle;
 import com.okagaka.OkaGaka.domain.vehicle.repository.VehicleRepository;
 import com.okagaka.OkaGaka.domain.zone.entity.Zone;
 import com.okagaka.OkaGaka.domain.zone.repository.ZoneRepository;
-import com.okagaka.OkaGaka.domain.signup.dto.ZoneResponse;
-import com.okagaka.OkaGaka.domain.signup.dto.SignupCompleteResponse;
 import com.okagaka.OkaGaka.common.external.tmap.TmapGeocodingClient;
 
 
@@ -243,16 +239,31 @@ public class SignupService {
                         .build()
         );
 
-        List<String> imageUrls = new ArrayList<>();
+//        List<String> imageUrls = new ArrayList<>();
+//        if (signup.getFaceImages() != null) {
+//            for (String url : signup.getFaceImages()) {
+//                userFaceImageRepository.save(
+//                        UserFaceImage.builder()
+//                                .user(user)
+//                                .imageUrl(url)
+//                                .build()
+//                );
+//                imageUrls.add(url);
+//            }
+//        }
+
+        List<FaceImageInfo> faceImageInfos = new ArrayList<>(); // DTO 리스트를 생성
         if (signup.getFaceImages() != null) {
             for (String url : signup.getFaceImages()) {
-                userFaceImageRepository.save(
+                // save() 메서드는 DB에 저장된 후 ID가 부여된 엔티티를 반환합니다.
+                UserFaceImage savedImage = userFaceImageRepository.save(
                         UserFaceImage.builder()
                                 .user(user)
                                 .imageUrl(url)
                                 .build()
                 );
-                imageUrls.add(url);
+                // 반환된 엔티티에서 ID와 URL을 꺼내 DTO를 만들어 리스트에 추가합니다.
+                faceImageInfos.add(new FaceImageInfo(savedImage.getId(), savedImage.getImageUrl()));
             }
         }
 
@@ -276,7 +287,7 @@ public class SignupService {
                 .userId(user.getId())
                 .userName(user.getName())
                 .phoneNumber(user.getPhoneNumber())
-                .imageUrls(imageUrls)
+                .faceImages(faceImageInfos)
                 .familyId(family.getId())
                 .zoneId(zone != null ? zone.getId() : null)
                 .zoneName(zone != null ? zone.getName() : null)

@@ -50,7 +50,6 @@ public class SignupController {
             @RequestParam Long tempId,
             @RequestParam("imageUrls") List<MultipartFile> imageUrls
     ) {
-        System.out.println("오냐?");
         List<String> uploadedImageUrls = signupService.saveFaceImages(tempId, imageUrls);
         FaceImagesResponse response = new FaceImagesResponse(uploadedImageUrls);
         return ResponseEntity.ok(ApiResponse.success(response));
