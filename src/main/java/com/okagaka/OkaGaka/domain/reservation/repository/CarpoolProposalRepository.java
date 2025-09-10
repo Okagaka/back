@@ -4,7 +4,9 @@ import com.okagaka.OkaGaka.domain.reservation.entity.CarpoolProposal;
 import com.okagaka.OkaGaka.domain.reservation.enums.ProposalStatus;
 import com.okagaka.OkaGaka.domain.reservation.enums.ReservationStatus;
 import com.okagaka.OkaGaka.domain.reservation.entity.Reservation;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -39,6 +41,10 @@ public interface CarpoolProposalRepository extends JpaRepository<CarpoolProposal
        """)
     List<CarpoolProposal> findPendingProposalsForUser(@Param("userId") Long userId,
                                                       @Param("status") ProposalStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE) // 조회 시점에 DB 로우(Row)에 쓰기 잠금
+    @Query("SELECT p FROM CarpoolProposal p WHERE p.id = :proposalId")
+    Optional<CarpoolProposal> findByIdWithLock(@Param("proposalId") Long proposalId);
 
 
 }

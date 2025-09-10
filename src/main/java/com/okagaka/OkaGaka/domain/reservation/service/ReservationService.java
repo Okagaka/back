@@ -318,8 +318,15 @@ public class ReservationService {
          */
 
         // 제안 조회
-        CarpoolProposal proposal = carpoolProposalRepository.findById(proposalId)
+//        CarpoolProposal proposal = carpoolProposalRepository.findById(proposalId)
+//                .orElseThrow(() -> new CustomException(ErrorCode.CARPOOL_PROPOSAL_NOT_FOUND));
+        CarpoolProposal proposal = carpoolProposalRepository.findByIdWithLock(proposalId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CARPOOL_PROPOSAL_NOT_FOUND));
+
+        // 제안 상태 확인 로직 추가
+        if (proposal.getStatus() != ProposalStatus.PENDING) {
+            throw new CustomException(ErrorCode.PROPOSAL_ALREADY_PROCESSED); // 예: "이미 처리된 제안입니다."
+        }
 
         Reservation existingReservation = proposal.getFromReservation(); // 기존 예약
         Reservation pendingReservation = proposal.getToReservation(); // 새로운 예약
@@ -331,7 +338,7 @@ public class ReservationService {
 
         // 제안 상태 업데이트(제안 수락)
         proposal.setStatus(ProposalStatus.ACCEPTED);
-        carpoolProposalRepository.save(proposal);
+//        carpoolProposalRepository.save(proposal);
 
         // pendingReservation에 연결된 모든 제안 조회
         List<CarpoolProposal> allProposals = carpoolProposalRepository
@@ -346,12 +353,13 @@ public class ReservationService {
             for (CarpoolProposal p : allProposals) {
                 Reservation res = p.getFromReservation();
                 res.setDepartureDateTime(p.getProposedDepartureTime());
+                res.setArrivalDateTime(p.getProposedArrivalTime());
                 res.setStatus(ReservationStatus.CARPOOL);
                 reservationRepository.save(res);
             }
 
             // 요청자 예약 확정
-            pendingReservation.setStatus(ReservationStatus.CONFIRMED);
+            pendingReservation.setStatus(ReservationStatus.CARPOOL);
             reservationRepository.save(pendingReservation);
 
             // 알림 전송
@@ -367,6 +375,8 @@ public class ReservationService {
                 .reservationId(pendingReservation.getId())
                 .status(pendingReservation.getStatus())
                 .calculatedDepartureTime(pendingReservation.getDepartureDateTime())
+                .desiredArrivalTime(pendingReservation.getDesiredArrivalTime())
+                .calculatedArrivalTime(pendingReservation.getArrivalDateTime())
                 .message("카풀 제안을 수락했습니다.")
                 .build();
     }
@@ -415,6 +425,8 @@ public class ReservationService {
                 .reservationId(pendingReservation.getId())
                 .status(pendingReservation.getStatus())
                 .calculatedDepartureTime(pendingReservation.getDepartureDateTime())
+                .calculatedArrivalTime(pendingReservation.getArrivalDateTime())
+                .desiredArrivalTime(pendingReservation.getDesiredArrivalTime())
                 .message("카풀 제안이 거부되어 예약이 취소되었습니다.")
                 .build();
     }
@@ -444,6 +456,7 @@ public class ReservationService {
                             .fromReservationTitle(p.getFromReservation().getTitle())
                             .toReservationUserName(p.getToReservation().getUser().getName())
                             .proposedDepartureTime(p.getProposedDepartureTime())
+                            .proposedArrivalTime(p.getProposedArrivalTime())
                             .status(p.getStatus())
                             .build();
                 })

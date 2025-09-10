@@ -60,13 +60,13 @@ public class ReservationController {
      */
     @Operation(summary = "카풀 제안 거절", description = "기존 예약자가 카풀 제안을 거절")
     @PostMapping("/proposals/{proposalId}/reject")
-    public ResponseEntity<ApiResponse<Void>> rejectCarpoolProposal(
+    public ResponseEntity<ApiResponse<ReservationResponse>> rejectCarpoolProposal(
             @PathVariable Long proposalId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         Long userId = userDetails.getUserId();
-        reservationService.rejectCarpoolProposal(proposalId, userId);
-        return ResponseEntity.ok(ApiResponse.success(null, "카풀 제안이 거부되어 요청자 예약이 취소되었습니다."));
+        ReservationResponse response = reservationService.rejectCarpoolProposal(proposalId, userId);
+        return ResponseEntity.ok(ApiResponse.success(response, "카풀 제안이 거부되어 요청자 예약이 취소되었습니다."));
     }
 
     /**
