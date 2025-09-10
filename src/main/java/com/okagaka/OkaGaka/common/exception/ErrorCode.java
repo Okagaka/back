@@ -28,6 +28,7 @@ public enum ErrorCode {
     TMAP_GUIDE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "길 안내 예측에 실패했습니다."),
     DEPARTURE_TIME_NOT_FOUND(HttpStatus.BAD_REQUEST, "departureTime 값을 찾을 수 없습니다."),
     CARPOOL_DECISION_PENDING(HttpStatus.CONFLICT, "카풀 제안이 아직 처리되지 않았습니다."),
+    PROPOSAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 제안입니다."),
 
 
 

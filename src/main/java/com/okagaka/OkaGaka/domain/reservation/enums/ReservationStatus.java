@@ -10,7 +10,7 @@ package com.okagaka.OkaGaka.domain.reservation.enums;
 */
 public enum ReservationStatus {
     PENDING,
-    CONFIRMED,
+    CONFIRMED, // 카풀을 하는 reservation은 상태가 CONFIRMED가 아니라 CARPOOL이 되어야 함
     CARPOOL,
 //    REJECTED,
     CANCELLED,

@@ -10,6 +10,7 @@ import com.okagaka.OkaGaka.common.external.tmap.TmapGeocodingClient;
 import com.okagaka.OkaGaka.common.external.tmap.TmapRouteMatrixService;
 import com.okagaka.OkaGaka.common.external.tmap.dto.MatrixRouteInfoDTO;
 import com.okagaka.OkaGaka.domain.reservation.service.CarpoolService;
+import com.okagaka.OkaGaka.domain.reservation.service.CarpoolService.Point;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -142,6 +143,92 @@ public class TmapService {
         return offsetDateTime.format(formatter);
     }
 
+    /**
+     * 확정된 경로와 출발 시간을 기준으로, 교통 상황을 예측하여 더 정확한 시간표를 반환합니다.
+     * @param path 최종 확정된 최적 경로 (경유지 목록)
+     * @param startTime 첫 번째 출발자의 출발 시간
+     * @return 각 경유지(Point)별로 예측된 도착 시간이 담긴 Map
+     */
+    public Map<Point, LocalDateTime> getVerifiedTimetable(List<Point> path, LocalDateTime startTime) {
+        if (path == null || path.size() < 2) {
+            throw new IllegalArgumentException("경로는 최소 2개 이상의 지점을 포함해야 합니다.");
+        }
+
+        String url = UriComponentsBuilder
+                .fromHttpUrl("https://apis.openapi.sk.com/tmap/routes/routeSequential30")
+                .queryParam("version", "1")
+                .build()
+                .toUriString();
+
+        // 1. 경로 및 시간 데이터 가공
+        Point startPoint = path.get(0);
+        Point endPoint = path.get(path.size() - 1);
+        List<Point> viaPointsList = path.subList(1, path.size() - 1);
+
+        DateTimeFormatter tmapFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+        String startTimeStr = startTime.format(tmapFormatter);
+
+        // 2. API 요청 본문(Body) 생성
+        Map<String, Object> body = new HashMap<>();
+        body.put("startName", "출발");
+        body.put("startX", String.valueOf(startPoint.getLon()));
+        body.put("startY", String.valueOf(startPoint.getLat()));
+        body.put("endName", "도착");
+        body.put("endX", String.valueOf(endPoint.getLon()));
+        body.put("endY", String.valueOf(endPoint.getLat()));
+        body.put("startTime", startTimeStr);
+        body.put("searchOption", 0); // 교통 최적 + 추천
+
+        List<Map<String, String>> viaPointsBody = new ArrayList<>();
+        for (int i = 0; i < viaPointsList.size(); i++) {
+            Point p = viaPointsList.get(i);
+            Map<String, String> via = new HashMap<>();
+            // viaPointId는 API 응답과 매칭되지 않으므로, 단순히 순서 식별용으로 사용
+            via.put("viaPointId", String.format("via%02d", i + 1));
+            via.put("viaPointName", "경유지" + (i + 1));
+            via.put("viaX", String.valueOf(p.getLon()));
+            via.put("viaY", String.valueOf(p.getLat()));
+            viaPointsBody.add(via);
+        }
+        body.put("viaPoints", viaPointsBody);
+
+        // 3. API 호출
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.set("appKey", appKey);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        // 반환 타입을 JsonNode로 변경하여 더 안전하게 파싱
+        ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+
+        // 4. API 응답 파싱 및 결과 가공
+        Map<Point, LocalDateTime> verifiedTimetable = new HashMap<>();
+        JsonNode responseBody = response.getBody();
+
+        if (responseBody != null && responseBody.has("features")) {
+            JsonNode features = responseBody.get("features");
+            DateTimeFormatter responseFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+            for (JsonNode feature : features) {
+                JsonNode properties = feature.path("properties");
+                // API 응답의 index는 출발지=0, 첫번째 경유지=1, ..., 목적지 순서
+                int index = properties.path("index").asInt();
+                String arriveTimeStr = properties.path("arriveTime").asText();
+
+                if (index < path.size()) { // 경로 리스트의 범위를 벗어나지 않는지 확인
+                    Point correspondingPoint = path.get(index);
+                    LocalDateTime arrivalTime = LocalDateTime.parse(arriveTimeStr, responseFormatter);
+                    verifiedTimetable.put(correspondingPoint, arrivalTime);
+                }
+            }
+        } else {
+            throw new RuntimeException("TMAP 다중 경유지 경로안내 API 응답이 올바르지 않습니다.");
+        }
+
+        return verifiedTimetable;
+    }
+
     public RouteResult calculateMultiRouteTravelTime(List<CarpoolService.Point> path, LocalDateTime targetArrivalTime) throws Exception {
 
         if (path.size() < 2) {
@@ -202,48 +289,53 @@ public class TmapService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
                 url,
                 HttpMethod.POST,
                 entity,
-                Map.class
+                JsonNode.class
         );
 
-        Map<String, Object> resp = response.getBody();
-        if (resp == null) {
-            throw new RuntimeException("Tmap API 응답이 null");
+        JsonNode responseBody = response.getBody();
+        if (responseBody == null) {
+            throw new RuntimeException("Tmap API 응답이 null입니다.");
         }
 
         // totalTime 추출 (초 단위)
-        Map<String, Object> properties = (Map<String, Object>) resp.get("properties");
-        int totalTime = Integer.parseInt((String) properties.get("totalTime"));
+        // .path()를 사용하면 null 체크 없이 안전하게 접근 가능
+                JsonNode properties = responseBody.path("properties");
+                int totalTime = properties.path("totalTime").asInt();
 
-        // features → 각 경유지 도착 시간
-        List<Map<String, Object>> features = (List<Map<String, Object>>) resp.get("features");
-        Map<String, LocalDateTime> arrivalTimes = new HashMap<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        // features -> 각 경유지 도착 시간
+                JsonNode features = responseBody.path("features");
+                Map<String, LocalDateTime> arrivalTimes = new HashMap<>();
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-        LocalDateTime apiStartTime = null;
-        for (Map<String, Object> feature : features) {
-            Map<String, Object> prop = (Map<String, Object>) feature.get("properties");
-            String viaPointName = (String) prop.get("viaPointName");
-            String arriveTime = (String) prop.get("arriveTime"); // YYYYMMDDHHMMSS
-            if (arriveTime != null && viaPointName != null) {
-                LocalDateTime time = LocalDateTime.parse(arriveTime, formatter);
-                arrivalTimes.put(viaPointName, time);
+                LocalDateTime apiStartTime = null;
 
-                // (?) 출발지 도착 시간 확인
-                if (viaPointName.equals(start.toString())) {
-                    apiStartTime = time;
+        // for-each 구문으로 더 간결하게 순회
+                for (JsonNode feature : features) {
+                    JsonNode prop = feature.path("properties");
+                    String viaPointName = prop.path("viaPointName").asText(null); // null일 경우를 대비해 기본값 지정
+                    String arriveTimeStr = prop.path("arriveTime").asText(null);
+
+                    if (arriveTimeStr != null && viaPointName != null) {
+                        LocalDateTime time = LocalDateTime.parse(arriveTimeStr, formatter);
+                        arrivalTimes.put(viaPointName, time);
+
+                        // 출발지 도착 시간 확인
+                        // ✅ Point 객체의 toString() 결과와 비교
+                        if (viaPointName.equals(start.toString())) {
+                            apiStartTime = time;
+                        }
+                    }
                 }
-            }
-        }
 
-        if (apiStartTime == null) {
-            throw new RuntimeException("출발지에 해당하는 경유지 도착 시간이 없습니다.");
-        }
+                if (apiStartTime == null) {
+                    throw new RuntimeException("API 응답에서 출발지에 해당하는 도착 시간을 찾을 수 없습니다.");
+                }
 
-        return new RouteResult(totalTime, arrivalTimes);
+                return new RouteResult(totalTime, arrivalTimes);
 
     }
 

@@ -33,6 +33,9 @@ public class CarpoolService {
 
     public CarpoolCheckResult optimizeCarpool(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
 
+        System.out.println("\n===== [CarpoolService] 최적 경로 탐색 시작 =====");
+        System.out.println(">> 입력: 기존 확정 예약 " + confirmedReservations.size() + "건, 신규 요청 1건");
+
         // 새 예약도 포함
 
         // 신규 예약
@@ -63,6 +66,9 @@ public class CarpoolService {
         List<Reservation> allReservations = new ArrayList<>(confirmedReservations);
         allReservations.add(newReservation);
 
+        // --- 1단계: 데이터 준비 ---
+        System.out.println("\n--- [단계 1] 데이터 준비: 모든 출발/도착지를 Point 객체로 변환 ---");
+
         // 1. 각 예약에서 dep, des 좌표 객체 생성
         List<Point> points = new ArrayList<>();
         Map<Reservation, Point> depMap = new HashMap<>();
@@ -77,11 +83,25 @@ public class CarpoolService {
             desMap.put(r, des);
         }
 
+        System.out.println(">> 총 " + points.size() + "개의 지점(Point) 생성 완료.");
+        System.out.println(points);
+
+        // --- 2단계: 유효 경로 후보 생성 ---
+        System.out.println("\n--- [단계 2] 유효 경로 생성: DFS 알고리즘으로 모든 가능한 경로 조합 탐색 ---");
         // 2. 유효 경로 후보 생성 (DFS + 백트래킹)
         List<List<Point>> allValidPaths = new ArrayList<>();
         generatePaths(new ArrayList<>(), points, depMap, desMap, allValidPaths);
+        System.out.println(">> 총 " + allValidPaths.size() + "개의 유효한 경로 후보 생성 완료.");
+
+        System.out.println("--- 생성된 유효 경로 목록 ---");
+        int pathCount = 1;
+        for (List<Point> path : allValidPaths) {
+            System.out.println("경로 " + pathCount++ + ": " + path);
+        }
+        System.out.println("--------------------------");
 
         if (allValidPaths.isEmpty()) {
+            System.out.println(">> 유효 경로가 없어 카풀 불가.");
             return null; // 카풀 불가
         }
 
@@ -96,6 +116,8 @@ public class CarpoolService {
 //            }
 //        }
 
+        // --- 3단계: 이동 시간표 생성 ---
+        System.out.println("\n--- [단계 3] 이동 시간표 생성: TMAP 경로 매트릭스 API 호출 ---");
         // 3. TMAP 경로 매트릭스 API 호출 -> durationMatrix 생성
         List<Coordinate> coords = points.stream()
                 .map(p -> new Coordinate(
@@ -114,6 +136,7 @@ public class CarpoolService {
         for (MatrixRouteInfoDTO dto : routeInfos) {
             durationMatrix[dto.getOriginIndex()][dto.getDestinationIndex()] = dto.getDuration();
         }
+        System.out.println(">> 모든 지점 간 이동 시간표(durationMatrix) 생성 완료.");
 
         // 4. 모든 유효 경로 후보 평가
 //        int minTimeSec = Integer.MAX_VALUE;
@@ -123,6 +146,8 @@ public class CarpoolService {
         Map<Point, Integer> indexMap = new HashMap<>();
         for (int i = 0; i < points.size(); i++) indexMap.put(points.get(i), i);
 
+        // --- 4단계: 최적 경로 평가 ---
+        System.out.println("\n--- [단계 4] 최적 경로 평가: " + allValidPaths.size() + "개 경로의 총 소요 시간 계산 ---");
         // 4. 모든 경로 후보 평가
         long minTimeSec = Long.MAX_VALUE;
         List<Point> optimalPath = null;
@@ -149,21 +174,69 @@ public class CarpoolService {
                 optimalPath = pathCandidate;
             }
         }
+        System.out.println(">> 최적 경로 탐색 완료!");
+        System.out.println(">> 최단 소요 시간: " + minTimeSec + "초");
+        System.out.println(">> 최적 경로: " + optimalPath);
+
 
         if (optimalPath == null) {
             return null;
         }
 
-        // 5. 역방향 누적 계산으로 모든 참여자의 출발/도착 시간 계산
-        Map<Point, LocalDateTime> arrivalTimesAtPoints = calculateArrivalTimes(optimalPath, durationMatrix, indexMap, desMap);
+        // --- 5단계: 대략적인 시간표 계산 ---
+        System.out.println("\n--- [단계 5] 대략적인 시간표 계산: 역방향 계산으로 모든 지점의 도착/출발 시간 결정 ---");
+        // 5. 역방향 누적 계산으로 모든 참여자의 출발/도착 시간 계산(대략적인)
+        Map<Point, LocalDateTime> roughTimetable = calculateArrivalTimes(optimalPath, durationMatrix, indexMap, desMap);
+        System.out.println(">> 대략적인 시간표(arrivalTimesAtPoints) 생성 완료.");
+        System.out.println(roughTimetable);
 
         // 이제 departureTimes 맵에는 각 예약별로 계산된 출발 시간이 들어있습니다.
         // 이 결과를 포함하여 CarpoolCheckResult 객체를 생성하고 반환하면 됩니다.
-        System.out.println("계산된 최적 경로: " + optimalPath);
-        System.out.println("계산된 출발 시간: " + arrivalTimesAtPoints);
+//        System.out.println("계산된 최적 경로: " + optimalPath);
+//        System.out.println("계산된 출발 시간: " + arrivalTimesAtPoints);
 
-        // 6. 결과를 CarpoolCheckResult 형식에 맞게 가공
-        return createCarpoolCheckResult(optimalPath, newReservation, arrivalTimesAtPoints, minTimeSec);
+        // --- 6단계: '최종 경로 검증' API 호출
+        System.out.println("\n--- [단계 5] 최종 경로 검증: Prediction API로 더 정확한 시간 예측 ---");
+        // 대략적인 시간표에서 첫 번째 출발자의 출발 시간을 가져옴
+        LocalDateTime firstDepartureTime = roughTimetable.get(optimalPath.get(0));
+
+        // TmapService의 새 메서드를 호출하여 교통 상황이 반영된 '정확한' 시간표를 받음
+        Map<Point, LocalDateTime> verifiedTimetable = tmapService.getVerifiedTimetable(optimalPath, firstDepartureTime);
+        System.out.println(">> 검증된 최종 운행 시간표: " + verifiedTimetable);
+
+        // --- 7단계: 최종 시간 보정 (희망 도착 시간 준수)
+        System.out.println("\n--- [단계 6] 최종 시간 보정: 희망 도착 시간 준수를 위해 전체 일정 조정 ---");
+        Point finalDestinationPoint = optimalPath.get(optimalPath.size() - 1);
+        LocalDateTime predictedFinalArrivalTime = verifiedTimetable.get(finalDestinationPoint);
+        LocalDateTime desiredFinalArrivalTime = finalDestinationPoint.getReservation().getDesiredArrivalTime();
+
+        Map<Point, LocalDateTime> adjustedTimetable = verifiedTimetable; // 기본값은 검증된 시간표
+        if (predictedFinalArrivalTime.isAfter(desiredFinalArrivalTime)) {
+            // 지연 시간 계산
+            Duration delay = Duration.between(desiredFinalArrivalTime, predictedFinalArrivalTime);
+            System.out.println(">> 예측된 도착 시간이 희망 시간보다 " + delay.toMinutes() + "분 늦어 전체 일정을 앞당깁니다.");
+
+            // 지연 시간만큼 전체 시간표를 앞으로 당김
+            adjustedTimetable = new HashMap<>();
+            for (Map.Entry<Point, LocalDateTime> entry : verifiedTimetable.entrySet()) {
+                adjustedTimetable.put(entry.getKey(), entry.getValue().minus(delay));
+            }
+            System.out.println(">> 보정된 최종 운행 시간표: " + adjustedTimetable);
+        } else {
+            System.out.println(">> 예측된 도착 시간이 희망 시간보다 빠르거나 같아 추가 보정 없음.");
+        }
+
+        // --- 8단계: '정확한' 시간표로 최종 결과 생성 (입력값만 변경)
+        System.out.println("\n--- [단계 7] 최종 결과 패키징 ---");
+        // 기존의 createCarpoolCheckResult에 '대략적인' 시간표(roughTimetable) 대신
+        // '정확한' 시간표(verifiedTimetable)를 전달합니다.
+        return createCarpoolCheckResult(optimalPath, newReservation, adjustedTimetable, minTimeSec);
+
+//        // --- 6단계: 결과 패키징 ---
+//        System.out.println("\n--- [단계 6] 최종 결과 패키징 ---");
+//        CarpoolCheckResult result = createCarpoolCheckResult(optimalPath, newReservation, arrivalTimesAtPoints, minTimeSec);
+//        System.out.println("===== [CarpoolService] 최적 경로 탐색 종료 =====");
+//        return result;
 
 
     }
@@ -179,6 +252,7 @@ public class CarpoolService {
         LocalDateTime newReservationDepartureTime = null;
         LocalDateTime newReservationArrivalTime = null;
         Map<Long, LocalDateTime> updatedDepartureTimes = new HashMap<>();
+        Map<Long, LocalDateTime> updatedArrivalTimes = new HashMap<>();
 
         for (Point p : optimalPath) {
             Reservation r = p.getReservation();
@@ -195,6 +269,9 @@ public class CarpoolService {
             // 기존 예약자인 경우
             else if (p.isDeparture()) {
                 updatedDepartureTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
+            } else {
+                // 기존 예약자의 도착 지점 시간을 updatedArrivalTimes 맵에 저장
+                updatedArrivalTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
             }
         }
 
@@ -209,6 +286,7 @@ public class CarpoolService {
                 newReservationArrivalTime,
                 newReservationTravelTimeSec,
                 updatedDepartureTimes,
+                updatedArrivalTimes,
                 totalTravelTime
         );
     }
@@ -236,7 +314,7 @@ public class CarpoolService {
         // 실제로는 Reservation 객체에 저장된 desiredArrivalTime을 사용해야 합니다.
         // 여기서는 예시로 현재 시간을 기준으로 하지만, 실제로는 아래와 같이 가져와야 합니다.
          LocalDateTime lastArrivalTime = lastReservation.getDesiredArrivalTime();
-//        LocalDateTime lastArrivalTime = LocalDateTime.now(); // <<-- 이 부분을 실제 희망 도착 시간으로 변경!
+        System.out.println(">> 역방향 계산 시작. 기준 시간 (마지막 지점 " + lastPoint + ") -> " + lastArrivalTime);
         arrivalTimesAtPoints.put(lastPoint, lastArrivalTime);
 
 
@@ -250,6 +328,7 @@ public class CarpoolService {
 
             // 다음 지점의 도착 시간에서 이동 시간을 빼서 현재 지점의 도착 시간을 계산
             LocalDateTime currentPointArrivalTime = arrivalTimesAtPoints.get(nextPoint).minusSeconds(travelDurationSec);
+            System.out.print("   - " + currentPoint + " 도착 시간 계산: " + arrivalTimesAtPoints.get(nextPoint) + " - " + travelDurationSec + "초 = " + currentPointArrivalTime);
 
             // 3. 희망 도착 시간 보정: 만약 현재 지점이 누군가의 '목적지'라면
             if (currentPoint.isDestination()) {
@@ -260,9 +339,10 @@ public class CarpoolService {
                 // 계산된 도착 시간이 희망 도착 시간보다 늦다면, 희망 도착 시간으로 조정 (더 이른 시간으로)
                 if (currentPointArrivalTime.isAfter(desired)) {
                     currentPointArrivalTime = desired;
+                    System.out.print(" -> **시간 보정 발생!** 희망 시간(" + desired + ")으로 조정");
                 }
             }
-
+            System.out.println(); // 줄바꿈
             arrivalTimesAtPoints.put(currentPoint, currentPointArrivalTime);
         }
 
