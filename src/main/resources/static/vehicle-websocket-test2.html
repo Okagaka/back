@@ -2,9 +2,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Vehicle Location Subscriber (JWT Auth)</title>
+    <title>Vehicle Location Subscriber (JWT Auth) - DEBUG</title>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <style>
+        /* CSS는 기존과 동일 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; }
         .container { max-width: 700px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
         h1 { text-align: center; }
@@ -28,13 +29,13 @@
 <body>
 
 <div class="container">
-    <h1>차량 위치 실시간 구독 (JWT 인증)</h1>
+    <h1>차량 위치 실시간 구독 (JWT 인증) - 디버그 모드</h1>
+    <!-- HTML 구조는 기존과 동일 -->
     <div class="controls">
         <div class="control-group">
             <label for="wsUrl">Server URL:</label>
             <input type="text" id="wsUrl" value="ws://localhost:8080/ws-location">
         </div>
-        <!-- ✅ 1. Group ID 입력 대신 JWT Token 입력 UI로 변경 -->
         <div class="control-group">
             <label for="jwtToken">JWT Token:</label>
             <input type="text" id="jwtToken" placeholder="로그인 후 발급받은 JWT 토큰을 입력하세요">
@@ -44,7 +45,6 @@
             <button id="disconnectBtn" disabled>Disconnect</button>
         </div>
     </div>
-
     <div id="log-container">
         <h3>수신된 메시지:</h3>
         <pre id="messages"></pre>
@@ -66,39 +66,44 @@
     }
 
     function connect() {
+        // ... (connect 함수 상단은 기존과 동일) ...
         const wsUrl = wsUrlInput.value;
         const token = jwtTokenInput.value;
-
-        // ✅ 2. Group ID 대신 JWT Token 입력 여부 확인
-        if (!wsUrl || !token) {
-            alert('Server URL과 JWT Token을 모두 입력하세요.');
-            return;
-        }
-
+        if (!wsUrl || !token) { alert('Server URL과 JWT Token을 모두 입력하세요.'); return; }
         log("Connecting to WebSocket server with JWT...");
-
         const socket = new WebSocket(wsUrl);
         stompClient = Stomp.over(socket);
-
-        // ✅ 3. connect 헤더에 'Authorization' 추가
-        const headers = {
-            'Authorization': 'Bearer ' + token
-        };
+        const headers = { 'Authorization': 'Bearer ' + token };
 
         stompClient.connect(headers,
             function(frame) {
                 log('✅ Connected: ' + frame);
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
-
-                // ✅ 4. 개인화된 큐(queue)를 구독
                 const userQueue = '/user/queue/location';
                 log(`Subscribing to private queue: ${userQueue}`);
 
+                // ✅ [수정] 구독 콜백 함수에 디버깅 코드 추가
                 stompClient.subscribe(userQueue, function(message) {
-                    log('🚀 Message received!');
-                    const messageBody = JSON.parse(message.body);
-                    log(JSON.stringify(messageBody, null, 2));
+                    // 1. 콜백 함수가 실행되는지 브라우저 콘솔에서 확인
+                    console.log("SUBSCRIBE CALLBACK TRIGGERED!", message);
+
+                    try {
+                        // 2. 메시지 본문을 콘솔에 그대로 출력 (파싱 전)
+                        console.log("Raw message body:", message.body);
+
+                        log('🚀 Message received!');
+                        const messageBody = JSON.parse(message.body);
+
+                        // 3. JSON 파싱이 성공했는지 콘솔에서 확인
+                        console.log("Parsed message body:", messageBody);
+
+                        log(JSON.stringify(messageBody, null, 2));
+                    } catch (e) {
+                        // 4. JSON 파싱 에러가 발생하면 콘솔에 에러를 출력
+                        console.error("Failed to parse message JSON:", e);
+                        log("❌ ERROR: Failed to parse received message. Check the browser console.");
+                    }
                 });
             },
             function(error) {
@@ -109,6 +114,7 @@
         );
     }
 
+    // ... (disconnect 함수는 기존과 동일) ...
     function disconnect() {
         if (stompClient !== null) {
             stompClient.disconnect();
