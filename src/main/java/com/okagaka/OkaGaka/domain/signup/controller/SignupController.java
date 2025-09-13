@@ -79,7 +79,7 @@ public class SignupController {
         FamilyCreateResponse response = signupService.createFamilyGroup(
                 tempId,
                 request.getFamilyName(),
-                request.getVehicleModel(),
+//                request.getVehicleModel(),
                 request.getCityDo(),
                 request.getGuGun(),
                 request.getDong(),

@@ -27,7 +27,7 @@ public class FamilyGroup extends BaseTimeEntity{
 
     // 차량과 연관 관계 (one-to-one)
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vehicle_id", nullable = false)
+    @JoinColumn(name = "vehicle_id", nullable = true)
     private Vehicle vehicle;
 
     @Builder.Default

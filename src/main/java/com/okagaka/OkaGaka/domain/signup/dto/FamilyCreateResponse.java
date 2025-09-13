@@ -12,7 +12,7 @@ import jakarta.persistence.*;
 public class FamilyCreateResponse {
     private Long familyId;
     private String familyName;
-    private String vehicleModel;
+//    private String vehicleModel;
 
     @Column(precision = 10, scale = 6)
     private double homeLatitude;

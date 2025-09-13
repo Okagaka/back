@@ -8,6 +8,7 @@ import com.okagaka.OkaGaka.domain.familygroup.entity.FamilyGroup;
 @Entity
 @Table(name = "vehicle")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -17,8 +18,14 @@ public class Vehicle extends BaseTimeEntity{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "api_key_hash", nullable = false, unique = true)
+    private String apiKeyHash;
+
     @Column(length = 50, nullable = false)
     private String model;
+
+    @Column(length = 50)
+    private String number;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

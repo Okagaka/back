@@ -31,6 +31,9 @@ public enum ErrorCode {
     PROPOSAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 제안입니다."),
     DUPLICATE_RESERVATION_TIME(HttpStatus.CONFLICT, "해당 시간대에 이미 자신의 예약이 존재합니다."),
 
+    VEHICLE_NOT_FOUND(HttpStatus.NOT_FOUND,"해당 차량을 찾을 수 없습니다."),
+    VEHICLE_ALREADY_EXISTS_IN_GROUP(HttpStatus.CONFLICT, "해당 그룹에는 이미 차량이 등록되어 있습니다."),
+
 
 
 

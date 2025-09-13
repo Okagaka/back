@@ -1,6 +1,7 @@
 package com.okagaka.OkaGaka.domain.location.service;
 
 import com.okagaka.OkaGaka.domain.location.dto.LocationDTO;
+import com.okagaka.OkaGaka.domain.vehicle.dto.VehicleLocationDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class LocationCacheService {
 
     private static final String LOCATION_KEY = "group:%d:user:%d:location";
     private static final long LOCATION_TTL_MINUTES = 1440; // 위치 정보 유지 시간 (예: 30분)
+    private static final String VEHICLE_LOCATION_KEY = "group:%d:vehicle:%d:location";
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
@@ -50,6 +52,33 @@ public class LocationCacheService {
 //        String key = String.format(LOCATION_KEY, dto.getGroupId(), dto.getUserId());
 //        redisTemplate.opsForValue().set(key, dto); // TTL 설정 필요시 set(key, value, Duration)
 //    }
+
+    // 차량의 현재 위치/상태를 Redis에 저장
+    public void saveVehicleLocation(Long groupId, Long vehicleId, VehicleLocationDTO dto) {
+        try {
+            String key = String.format(VEHICLE_LOCATION_KEY, groupId, vehicleId);
+            String locationJson = objectMapper.writeValueAsString(dto);
+            // 차량 정보는 더 자주 업데이트될 수 있으므로 TTL을 적절히 조절 (예: 10분)
+            redisTemplate.opsForValue().set(key, locationJson, 10, TimeUnit.MINUTES); // TTL 10분으로 설정
+        } catch (Exception e) {
+            // 로깅
+            System.err.println("Failed to save vehicle location to Redis: " + e.getMessage());
+        }
+    }
+
+    // 특정 차량의 위치를 Redis에서 가져옴
+    public VehicleLocationDTO getVehicleLocation(Long groupId, Long vehicleId) {
+        String key = String.format(VEHICLE_LOCATION_KEY, groupId, vehicleId);
+        String locationJson = redisTemplate.opsForValue().get(key);
+        if (locationJson != null) {
+            try {
+                return objectMapper.readValue(locationJson, VehicleLocationDTO.class);
+            } catch (Exception e) {
+                System.err.println("Failed to parse vehicle location from Redis: " + e.getMessage());
+            }
+        }
+        return null;
+    }
 
 
     /**
