@@ -66,6 +66,7 @@ public class SecurityConfig {
                                 "/stomp_test.html",
                                 "/vehicle-websocket-test.html",
                                 "/vehicle-websocket-test2.html",
+                                "vehicle2.html",
                                 "/api/signup/**",
                                 "/api/auth/login",
                                 "/api/user-face-embedding-images",

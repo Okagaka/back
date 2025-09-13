@@ -54,10 +54,10 @@ public class Vehicle extends BaseTimeEntity{
     private FamilyGroup familyGroup;
 
     public enum VehicleStatus {
-        Idle,
-        Moving,
-        Charging,
-        Unavailable
+        Idle, // 대기
+        Moving, // 이동
+        Charging, // 충전중
+        Unavailable // 사용불가
     }
 
 }

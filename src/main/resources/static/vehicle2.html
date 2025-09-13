@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Vehicle Location Subscriber (JWT Auth) - Manual Group</title>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; }
+        .container { max-width: 700px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        h1 { text-align: center; }
+        .controls { margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
+        input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; }
+        button { padding: 8px 15px; cursor: pointer; border: none; color: white; border-radius: 4px; }
+        #connectBtn { background-color: #28a745; }
+        #disconnectBtn { background-color: #dc3545; }
+        #messages { height: 300px; overflow-y: scroll; border: 1px solid #eee; background-color: #f9f9f9; padding: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>차량 위치 실시간 구독 (JWT 인증) - 그룹 입력</h1>
+    <div class="controls">
+        <label for="wsUrl">WebSocket URL:</label>
+        <input type="text" id="wsUrl" value="ws://localhost:8080/ws-location">
+        <label for="jwtToken">JWT Token:</label>
+        <input type="text" id="jwtToken" placeholder="JWT 토큰 입력">
+        <label for="groupId">그룹 ID:</label>
+        <input type="text" id="groupId" placeholder="구독할 그룹 ID 입력">
+        <button id="connectBtn">Connect & Subscribe</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+    <div>
+        <h3>수신 메시지:</h3>
+        <pre id="messages"></pre>
+    </div>
+</div>
+
+<script>
+    let stompClient = null;
+    const wsUrlInput = document.getElementById('wsUrl');
+    const jwtTokenInput = document.getElementById('jwtToken');
+    const groupIdInput = document.getElementById('groupId');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const messagesDiv = document.getElementById('messages');
+
+    function log(msg) {
+        messagesDiv.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}\n\n`;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function parseJwt(token) {
+        try {
+            const base64Payload = token.split('.')[1];
+            return JSON.parse(atob(base64Payload));
+        } catch(e) {
+            console.error("JWT 파싱 실패:", e);
+            return null;
+        }
+    }
+
+    function connect() {
+        const wsUrl = wsUrlInput.value;
+        const token = jwtTokenInput.value;
+        const groupId = groupIdInput.value;
+        if (!wsUrl || !token || !groupId) {
+            alert("WebSocket URL, JWT, 그룹 ID를 모두 입력하세요.");
+            return;
+        }
+
+        const payload = parseJwt(token);
+        if (!payload) { log("❌ JWT 파싱 실패"); return; }
+        log(`✅ JWT 파싱 성공, userId: ${payload.sub}`);
+
+        const socket = new WebSocket(wsUrl);
+        stompClient = Stomp.over(socket);
+        const headers = { 'Authorization': 'Bearer ' + token };
+
+        stompClient.connect(headers, function(frame) {
+            log('✅ WebSocket 연결됨: ' + frame);
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+
+            const topic = `/topic/group/${groupId}/location`;
+            log(`✅ 구독 시작: ${topic}`);
+
+            stompClient.subscribe(topic, function(message) {
+                try {
+                    const msgBody = JSON.parse(message.body);
+                    log(`🚀 메시지 수신:\n${JSON.stringify(msgBody, null, 2)}`);
+                } catch(e) {
+                    log("❌ 메시지 파싱 실패");
+                    console.error(e);
+                }
+            });
+        }, function(error) {
+            log('❌ WebSocket 연결 실패: ' + error);
+        });
+    }
+
+    function disconnect() {
+        if (stompClient) {
+            stompClient.disconnect();
+            log("🔌 WebSocket 연결 종료");
+            stompClient = null;
+        }
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+    }
+
+    connectBtn.addEventListener('click', connect);
+    disconnectBtn.addEventListener('click', disconnect);
+</script>
+</body>
+</html>
