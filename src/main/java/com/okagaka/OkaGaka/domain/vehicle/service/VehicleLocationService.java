@@ -4,6 +4,8 @@ import com.okagaka.OkaGaka.common.exception.CustomException;
 import com.okagaka.OkaGaka.common.exception.ErrorCode;
 import com.okagaka.OkaGaka.domain.familygroup.entity.FamilyGroup;
 import com.okagaka.OkaGaka.domain.location.service.LocationCacheService;
+import com.okagaka.OkaGaka.domain.user.entity.User;
+import com.okagaka.OkaGaka.domain.user.repository.UserRepository;
 import com.okagaka.OkaGaka.domain.vehicle.dto.RealTimeUpdate;
 import com.okagaka.OkaGaka.domain.vehicle.dto.VehicleLocationDTO;
 import com.okagaka.OkaGaka.domain.vehicle.dto.VehicleLocationUpdateDTO;
@@ -15,12 +17,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class VehicleLocationService {
 
     @Autowired
     private VehicleRepository vehicleRepository; // JPA Repository
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private LocationCacheService locationCacheService;
@@ -70,7 +76,37 @@ public class VehicleLocationService {
 
 
         // 6. 해당 그룹의 토픽으로 브로드캐스팅
-        messagingTemplate.convertAndSend("/topic/group/" + groupId, updateMessage);
+//        messagingTemplate.convertAndSend("/topic/group/" + groupId, updateMessage);
+
+        // ✅ 6. 수정된: 그룹에 속한 모든 사용자에게 1:1로 메시지 전송
+        List<User> usersInGroup = userRepository.findAllByFamilyGroupId(groupId);
+
+        for (User user : usersInGroup) {
+            // CustomUserDetails를 사용하신다면 user.getId()가 맞습니다.
+            // Spring Security의 Principal.getName()에 해당하는 사용자 고유 식별자를 사용해야 합니다.
+            String username = String.valueOf(user.getId());
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/location", // 클라이언트가 구독할 개인 큐 주소
+                    updateMessage
+            );
+        }
     }
+
+    // DTO 생성 로직 분리 (가독성을 위해)
+    private VehicleLocationDTO createBroadcastDto(Long vehicleId, Long groupId, VehicleLocationUpdateDTO updateDto) {
+        VehicleLocationDTO broadcastDto = new VehicleLocationDTO();
+        broadcastDto.setVehicleId(vehicleId);
+        broadcastDto.setGroupId(groupId);
+        broadcastDto.setLatitude(updateDto.getLatitude());
+        broadcastDto.setLongitude(updateDto.getLongitude());
+        broadcastDto.setBatteryLevel(updateDto.getBatteryLevel());
+        broadcastDto.setSpeed(updateDto.getSpeed());
+        broadcastDto.setStatus(updateDto.getStatus());
+        broadcastDto.setTimestamp(LocalDateTime.now());
+        return broadcastDto;
+    }
+
 }
 

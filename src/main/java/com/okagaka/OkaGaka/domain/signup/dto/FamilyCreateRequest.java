@@ -14,8 +14,8 @@ public class FamilyCreateRequest {
     @NotBlank(message = "가족 그룹명은 필수입니다.")
     private String familyName;
 
-    @NotBlank(message = "차량 모델명은 필수입니다.")
-    private String vehicleModel;
+//    @NotBlank(message = "차량 모델명은 필수입니다.")
+//    private String vehicleModel;
 
 //    @Schema(description = "집 좌표 (예: 37.12345,127.54321)")
 //    @NotBlank(message = "집 좌표는 필수입니다.")

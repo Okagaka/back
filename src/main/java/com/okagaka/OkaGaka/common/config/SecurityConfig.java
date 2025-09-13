@@ -64,12 +64,15 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/stomp_test.html",
+                                "/vehicle-websocket-test.html",
+                                "/vehicle-websocket-test2.html",
                                 "/api/signup/**",
                                 "/api/auth/login",
                                 "/api/user-face-embedding-images",
-                                "/api/stt/*",
+//                                "/api/stt/*",
+                                "/api/vehicles/*/location",
 //                                "/sockjs-node/**",
-                                "/ws-location/**", // 💡 이 경로를 여기에 포함시키세요.
+                                "/ws-location/**",
 //                                "/ws-location/*",
 //                                "/ws-location/*/*",
 //                                "/ws-location/info",
@@ -119,6 +122,13 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
+    }
+
+    // 비밀번호 인코더
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        // BCryptPasswordEncoder는 비밀번호를 안전하게 해싱하는 강력한 알고리즘입니다.
+        return new BCryptPasswordEncoder();
     }
 
 
@@ -179,12 +189,7 @@ public class SecurityConfig {
 //    }
 //
 //
-////    // 비밀번호 인코더
-////    @Bean
-////    public PasswordEncoder passwordEncoder() {
-////        // BCryptPasswordEncoder는 비밀번호를 안전하게 해싱하는 강력한 알고리즘입니다.
-////        return new BCryptPasswordEncoder();
-////    }
+
 //
 ////    @Bean
 ////    public CorsConfigurationSource corsConfigurationSource() {

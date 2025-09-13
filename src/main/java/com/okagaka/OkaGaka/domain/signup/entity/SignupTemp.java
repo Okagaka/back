@@ -38,7 +38,7 @@ public class SignupTemp {
     private List<TempZone> tempZones = new ArrayList<>();
 
 
-    private String vehicleModel;
+//    private String vehicleModel;
     private String address;
 
     private long familyId;

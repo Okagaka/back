@@ -24,6 +24,9 @@ public class Vehicle extends BaseTimeEntity{
     @Column(length = 50, nullable = false)
     private String model;
 
+    @Column(length = 50)
+    private String number;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)

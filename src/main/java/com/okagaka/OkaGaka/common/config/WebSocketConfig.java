@@ -37,7 +37,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer{
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic"); // 구독 경로(prefix) - 클라이언트가 구독할 수 있는 대상 경로(/topic으로 시작하는 경로에 브로커가 메시지를 보낼 수 있도록 설정)
+        config.enableSimpleBroker("/topic", "/queue"); // 구독 경로(prefix) - 클라이언트가 구독할 수 있는 대상 경로(/topic으로 시작하는 경로에 브로커가 메시지를 보낼 수 있도록 설정)
         config.setApplicationDestinationPrefixes("/app"); // 클라이언트 전송 경로(클라이언트가 서버로 메시지를 보낼 때 사용하는 prefix)
     }
 

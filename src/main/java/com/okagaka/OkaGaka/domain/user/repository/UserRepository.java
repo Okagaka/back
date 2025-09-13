@@ -17,7 +17,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.id FROM User u WHERE u.familyGroup.id = :familyId")
     List<Long> findUserIdsByFamilyGroupId(@Param("familyId") Long familyId);
 
+    @Query("SELECT u FROM User u JOIN FETCH u.familyGroup WHERE u.id = :id")
+    Optional<User> findByIdWithFamilyGroup(@Param("id") Long id);
+
     boolean existsByIdAndFamilyGroup_Id(Long userId, Long familyId);
 
     Optional<User> findByName(String name);
+
+    List<User> findAllByFamilyGroupId(Long familyGroupId);
 }

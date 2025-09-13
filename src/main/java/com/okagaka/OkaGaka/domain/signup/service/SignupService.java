@@ -184,7 +184,7 @@ public class SignupService {
 
 
     @Transactional
-    public FamilyCreateResponse createFamilyGroup(Long tempId, String familyName, String vehicleModel,
+    public FamilyCreateResponse createFamilyGroup(Long tempId, String familyName,
                                                   String cityDo, String guGun, String dong, String bunji) {
 
         // 주소 -> 좌표 변환
@@ -194,14 +194,14 @@ public class SignupService {
         double latitude = Double.parseDouble(coordinate.getLat());
         double longitude = Double.parseDouble(coordinate.getLon());
 
-        Vehicle vehicle = vehicleRepository.save(
-                Vehicle.builder().model(vehicleModel).build()
-        );
+//        Vehicle vehicle = vehicleRepository.save(
+//                Vehicle.builder().model(vehicleModel).build()
+//        );
 
         FamilyGroup family = familyGroupRepository.save(
                 FamilyGroup.builder()
                         .name(familyName)
-                        .vehicle(vehicle)
+//                        .vehicle(vehicle)
                         .homeLatitude(latitude)
                         .homeLongitude(longitude)
                         .build()
@@ -214,7 +214,7 @@ public class SignupService {
         return FamilyCreateResponse.builder()
                 .familyId(family.getId())
                 .familyName(familyName)
-                .vehicleModel(vehicleModel)
+//                .vehicleModel(vehicleModel)
                 .homeLatitude(latitude)
                 .homeLongitude(longitude)
                 .build();
