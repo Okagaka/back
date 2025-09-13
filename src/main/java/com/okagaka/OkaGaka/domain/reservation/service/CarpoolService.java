@@ -31,7 +31,7 @@ public class CarpoolService {
     private final TmapGeocodingClient tmapGeocodingClient;
     private final TmapRouteMatrixService tmapRouteMatrixService;
 
-    public CarpoolCheckResult optimizeCarpool(List<Reservation> confirmedReservations, ReservationRequest newRequest) {
+    public CarpoolCheckResult optimizeCarpool(List<Reservation> confirmedReservations, ReservationRequest newRequest, int newRequestSoloTravelTimeSec) {
 
         System.out.println("\n===== [CarpoolService] 최적 경로 탐색 시작 =====");
         System.out.println(">> 입력: 기존 확정 예약 " + confirmedReservations.size() + "건, 신규 요청 1건");
@@ -204,6 +204,32 @@ public class CarpoolService {
         Map<Point, LocalDateTime> verifiedTimetable = tmapService.getVerifiedTimetable(optimalPath, firstDepartureTime);
         System.out.println(">> 검증된 최종 운행 시간표: " + verifiedTimetable);
 
+        // 최종 효율성 검증 로직( (A 따로 가는 시간) + (B 따로 가는 시간) < (A와 B가 함께 가는 시간) -> 비효율적이라 카풀 생성 거부해야 함)
+        System.out.println("\n--- [추가 단계] 최종 경로 효율성 검증 ---");
+        // 1. 각자 따로 갔을 때의 소요 시간 합 계산
+        long sumOfIndividualTimes = newRequestSoloTravelTimeSec;
+        for (Reservation r : confirmedReservations) {
+            sumOfIndividualTimes += r.getTravelTimeSec();
+        }
+
+        // 2. 현실적인 카풀 총 소요 시간 계산
+        LocalDateTime carpoolStartTime = verifiedTimetable.get(optimalPath.get(0));
+        LocalDateTime carpoolEndTime = verifiedTimetable.get(optimalPath.get(optimalPath.size() - 1));
+        long verifiedCarpoolTotalTime = Duration.between(carpoolStartTime, carpoolEndTime).getSeconds();
+
+        // 3. 두 시간 비교 (10분의 여유시간 허용)
+        final int EFFICIENCY_THRESHOLD_SECONDS = 600; // 10분
+        System.out.println(">> 각자 이동 시 총합 (현실 예측 기반): " + sumOfIndividualTimes + "초");
+        System.out.println(">> 카풀 시 총 소요시간 (현실 예측 기반): " + verifiedCarpoolTotalTime + "초");
+
+        if (verifiedCarpoolTotalTime > sumOfIndividualTimes + EFFICIENCY_THRESHOLD_SECONDS) {
+            System.out.println(">> [검증 실패] 카풀이 각자 이동하는 것보다 10분 이상 비효율적이므로 카풀을 생성하지 않습니다.");
+            return null; // 카풀이 비효율적이므로 null 반환
+        }
+        System.out.println(">> [검증 성공] 카풀이 더 효율적이거나, 비효율이 10분 미만입니다.");
+
+
+
         // --- 7단계: 최종 시간 보정 (희망 도착 시간 준수)
         System.out.println("\n--- [단계 6] 최종 시간 보정: 희망 도착 시간 준수를 위해 전체 일정 조정 ---");
         Point finalDestinationPoint = optimalPath.get(optimalPath.size() - 1);
@@ -253,6 +279,11 @@ public class CarpoolService {
         LocalDateTime newReservationArrivalTime = null;
         Map<Long, LocalDateTime> updatedDepartureTimes = new HashMap<>();
         Map<Long, LocalDateTime> updatedArrivalTimes = new HashMap<>();
+        Map<Long, Integer> updatedTravelTimesSec = new HashMap<>();
+
+        // 임시로 각 '기존' 예약의 출발/도착 시간을 저장할 맵
+        Map<Long, LocalDateTime> tempDepartureTimes = new HashMap<>();
+        Map<Long, LocalDateTime> tempArrivalTimes = new HashMap<>();
 
         for (Point p : optimalPath) {
             Reservation r = p.getReservation();
@@ -268,12 +299,28 @@ public class CarpoolService {
             }
             // 기존 예약자인 경우
             else if (p.isDeparture()) {
-                updatedDepartureTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
+//                updatedDepartureTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
+                tempDepartureTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
             } else {
                 // 기존 예약자의 도착 지점 시간을 updatedArrivalTimes 맵에 저장
-                updatedArrivalTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
+//                updatedArrivalTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
+                tempArrivalTimes.put(r.getId(), arrivalTimesAtPoints.get(p));
             }
         }
+
+        // 임시 저장된 시간으로 기존 예약자들의 변경된 소요 시간 계산
+        for (Long reservationId : tempDepartureTimes.keySet()) {
+            LocalDateTime dep = tempDepartureTimes.get(reservationId);
+            LocalDateTime arr = tempArrivalTimes.get(reservationId);
+            if (dep != null && arr != null) {
+                int travelTime = (int) Duration.between(dep, arr).getSeconds();
+                updatedTravelTimesSec.put(reservationId, travelTime);
+            }
+        }
+
+        // 최종 맵에 데이터 복사
+        updatedDepartureTimes.putAll(tempDepartureTimes);
+        updatedArrivalTimes.putAll(tempArrivalTimes);
 
         // 신규 예약자의 순수 이동 시간 계산
         int newReservationTravelTimeSec = (int) Duration.between(
@@ -287,6 +334,7 @@ public class CarpoolService {
                 newReservationTravelTimeSec,
                 updatedDepartureTimes,
                 updatedArrivalTimes,
+                updatedTravelTimesSec,
                 totalTravelTime
         );
     }

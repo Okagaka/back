@@ -34,8 +34,13 @@ public class CarpoolProposal extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime proposedDepartureTime;
 
+    // 제안되는 도착 시간
     @Column(nullable = false)
-    private LocalDateTime proposedArrivalTime; // 제안되는 도착 시간도 저장
+    private LocalDateTime proposedArrivalTime;
+
+    // 제안되는 예상 소요 시간 (초)
+    @Column(nullable = false)
+    private int proposedTravelTimeSec;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

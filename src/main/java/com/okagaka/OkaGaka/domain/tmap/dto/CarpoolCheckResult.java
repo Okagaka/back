@@ -57,6 +57,9 @@ public class CarpoolCheckResult {
 
     private final Map<Long, LocalDateTime> updatedArrivalTimes;   // 기존 예약자들의 변경될 도착 시간
 
+    // Key: 예약 ID, Value: 변경된 소요 시간
+    private final Map<Long, Integer> updatedTravelTimesSec;
+
     /**
      * 최적 경로의 총 운행 시간 (초)
      */

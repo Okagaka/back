@@ -19,7 +19,7 @@ public enum ErrorCode {
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다."),
 
     CARPOOL_MAXIMUM_EXCEEDED(HttpStatus.BAD_REQUEST, "최대 카풀 인원(4명)을 초과하였습니다."),
-    CARPOOL_NOT_POSSIBLE(HttpStatus.CONFLICT, "해당 시간에는 이미 예약이 있으며, 카풀 조건이 맞지 않아 예약이 불가능합니다."),
+    CARPOOL_NOT_POSSIBLE(HttpStatus.CONFLICT, "해당 시간에는 이미 다른 가족 구성원의 예약이 있으며, 카풀 조건이 맞지 않아 예약이 불가능합니다."),
     CARPOOL_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "카풀 가능 인원(3명)을 초과하였습니다."),
 //    CARPOOL_NOT_POSSIBLE_WITH_EXISTING("기존 예약 그룹과 카풀이 불가능합니다."),
     CARPOOL_PROPOSAL_NOT_FOUND(HttpStatus.NOT_FOUND, "카풀 제안을 찾을 수 없습니다."),
@@ -29,6 +29,7 @@ public enum ErrorCode {
     DEPARTURE_TIME_NOT_FOUND(HttpStatus.BAD_REQUEST, "departureTime 값을 찾을 수 없습니다."),
     CARPOOL_DECISION_PENDING(HttpStatus.CONFLICT, "카풀 제안이 아직 처리되지 않았습니다."),
     PROPOSAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 제안입니다."),
+    DUPLICATE_RESERVATION_TIME(HttpStatus.CONFLICT, "해당 시간대에 이미 자신의 예약이 존재합니다."),
 
 
 
