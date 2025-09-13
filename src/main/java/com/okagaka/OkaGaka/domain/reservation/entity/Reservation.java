@@ -30,9 +30,9 @@ public class Reservation extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "carpool_group_id")
-    private CarpoolGroup carpoolGroup;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "carpool_group_id")
+//    private CarpoolGroup carpoolGroup;
 
     @Column(nullable = false)
     private String title;
