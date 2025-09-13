@@ -6,6 +6,7 @@ import com.okagaka.OkaGaka.domain.location.dto.LocationDTO;
 import com.okagaka.OkaGaka.domain.location.service.LocationCacheService;
 import com.okagaka.OkaGaka.domain.user.entity.User;
 import com.okagaka.OkaGaka.domain.user.repository.UserRepository;
+import com.okagaka.OkaGaka.domain.vehicle.dto.RealTimeUpdate;
 import org.springframework.security.core.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.*;
@@ -44,7 +45,6 @@ public class LocationWebSocketController {
 
         System.out.println("✅ 세션에서 직접 꺼낸 Authentication.getName(): " + authentication.getName());
 
-        // --- 이하 로직은 동일 ---
         Long userId = Long.parseLong(authentication.getName());
         dto.setUserId(userId);
 
@@ -63,6 +63,7 @@ public class LocationWebSocketController {
         cacheService.saveLocation(dto);
 
         // 2. 그룹 채널로 브로드캐스트
-        messagingTemplate.convertAndSend("/topic/group/" + dto.getGroupId(), dto);
+        RealTimeUpdate<LocationDTO> updateMessage = new RealTimeUpdate<>("USER_UPDATE", dto);
+        messagingTemplate.convertAndSend("/topic/group/" + dto.getGroupId(), updateMessage);
     }
 }

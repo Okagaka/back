@@ -101,10 +101,6 @@ public class SignupService {
         System.out.println("[DEBUG] SignupTemp 조회 완료: " + signup);
 
 
-        // 2. 주소 -> 좌표 변환
-//        Coordinate coordinate = tmapGeocodingClient.getCoordinates(
-//                request.getCityDo(), request.getGuGun(), request.getDong(), request.getBunji()
-//        );
         Coordinate coordinate;
         try {
             coordinate = tmapGeocodingClient.getCoordinates(
@@ -239,18 +235,6 @@ public class SignupService {
                         .build()
         );
 
-//        List<String> imageUrls = new ArrayList<>();
-//        if (signup.getFaceImages() != null) {
-//            for (String url : signup.getFaceImages()) {
-//                userFaceImageRepository.save(
-//                        UserFaceImage.builder()
-//                                .user(user)
-//                                .imageUrl(url)
-//                                .build()
-//                );
-//                imageUrls.add(url);
-//            }
-//        }
 
         List<FaceImageInfo> faceImageInfos = new ArrayList<>(); // DTO 리스트를 생성
         if (signup.getFaceImages() != null) {
