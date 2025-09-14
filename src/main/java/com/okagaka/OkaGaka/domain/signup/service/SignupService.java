@@ -2,6 +2,7 @@ package com.okagaka.OkaGaka.domain.signup.service;
 
 import com.okagaka.OkaGaka.common.exception.CustomException;
 import com.okagaka.OkaGaka.common.exception.ErrorCode;
+import com.okagaka.OkaGaka.common.external.embedding.EmbeddingApiClient;
 import com.okagaka.OkaGaka.common.external.tmap.Coordinate;
 import com.okagaka.OkaGaka.common.s3.S3Service;
 import com.okagaka.OkaGaka.domain.familygroup.entity.FamilyGroup;
@@ -15,6 +16,7 @@ import com.okagaka.OkaGaka.domain.user.entity.User;
 import com.okagaka.OkaGaka.domain.user.entity.UserFaceImage;
 import com.okagaka.OkaGaka.domain.user.repository.UserFaceImageRepository;
 import com.okagaka.OkaGaka.domain.user.repository.UserRepository;
+import com.okagaka.OkaGaka.domain.user.service.FaceEmbeddingService;
 import com.okagaka.OkaGaka.domain.vehicle.entity.Vehicle;
 import com.okagaka.OkaGaka.domain.vehicle.repository.VehicleRepository;
 import com.okagaka.OkaGaka.domain.zone.entity.Zone;
@@ -30,6 +32,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +48,8 @@ public class SignupService {
     private final TempZoneRepository tempZoneRepository;
     private final S3Service s3Service;
     private final TmapGeocodingClient tmapGeocodingClient;
+    private final FaceEmbeddingService faceEmbeddingService;
+    private final EmbeddingApiClient embeddingApiClient;
 
     public Long saveName(String name) {
         SignupTemp signup = SignupTemp.builder()
@@ -235,21 +241,61 @@ public class SignupService {
                         .build()
         );
 
+        // UserFaceImage 1차 저장 (imageId 생성)
+        List<UserFaceImage> savedFaceImages = new ArrayList<>(); // 실제 엔티티 리스트
+        List<FaceImageInfo> faceImageInfosForApi = new ArrayList<>(); // API 요청용 DTO 리스트
 
-        List<FaceImageInfo> faceImageInfos = new ArrayList<>(); // DTO 리스트를 생성
         if (signup.getFaceImages() != null) {
             for (String url : signup.getFaceImages()) {
-                // save() 메서드는 DB에 저장된 후 ID가 부여된 엔티티를 반환합니다.
                 UserFaceImage savedImage = userFaceImageRepository.save(
                         UserFaceImage.builder()
                                 .user(user)
                                 .imageUrl(url)
                                 .build()
                 );
-                // 반환된 엔티티에서 ID와 URL을 꺼내 DTO를 만들어 리스트에 추가합니다.
-                faceImageInfos.add(new FaceImageInfo(savedImage.getId(), savedImage.getImageUrl()));
+                savedFaceImages.add(savedImage); // 업데이트를 위해 엔티티 저장
+                faceImageInfosForApi.add(new FaceImageInfo(savedImage.getId(), savedImage.getImageUrl())); // API 요청에 사용할 정보 저장
             }
         }
+
+        System.out.println("UserFaceImage 1차 저장 완료");
+
+        // Embedding API 호출 및 결과 업데이트 로직
+        if(!savedFaceImages.isEmpty()){
+            faceEmbeddingService.createAndSaveEmbeddings(user.getId(), faceImageInfosForApi);
+//            // Embedding API 호출
+//            EmbeddingRequestDto embeddingRequest = new EmbeddingRequestDto(user.getId(), faceImageInfosForApi);
+//            EmbeddingResponseDto embeddingResponse = embeddingApiClient.getEmbeddings(embeddingRequest);
+//            System.out.println("Embedding API 호출 결과: " + embeddingResponse);
+//
+//            // 응답 결과를 바탕으로 UserFaceImage에 embeddingUrl 업데이트
+//            // 빠른 조회를 위해 Map으로 변환 (Key: imageId, Value: embeddingUrl)
+//            Map<Long, String> embeddingUrlMap = embeddingResponse.getData().getItems().stream()
+//                    .collect(Collectors.toMap(EmbeddingItem::getId, EmbeddingItem::getEmbeddingUrl));
+//
+//            // 저장했던 이미지 엔티티들을 순회하며 URL 업데이트
+//            savedFaceImages.forEach(image -> {
+//                String embeddingUrl = embeddingUrlMap.get(image.getId());
+//                if (embeddingUrl != null) {
+//                    image.updateEmbeddingImageUrl(embeddingUrl);
+//                }
+//            });
+        }
+
+//        List<FaceImageInfo> faceImageInfos = new ArrayList<>(); // DTO 리스트를 생성
+//        if (signup.getFaceImages() != null) {
+//            for (String url : signup.getFaceImages()) {
+//                // save() 메서드는 DB에 저장된 후 ID가 부여된 엔티티를 반환합니다.
+//                UserFaceImage savedImage = userFaceImageRepository.save(
+//                        UserFaceImage.builder()
+//                                .user(user)
+//                                .imageUrl(url)
+//                                .build()
+//                );
+//                // 반환된 엔티티에서 ID와 URL을 꺼내 DTO를 만들어 리스트에 추가합니다.
+//                faceImageInfos.add(new FaceImageInfo(savedImage.getId(), savedImage.getImageUrl()));
+//            }
+//        }
 
         // zone은 첫 번째 TempZone만 저장
         TempZone tempZone = signup.getTempZones().isEmpty() ? null : signup.getTempZones().get(0);
@@ -271,7 +317,8 @@ public class SignupService {
                 .userId(user.getId())
                 .userName(user.getName())
                 .phoneNumber(user.getPhoneNumber())
-                .faceImages(faceImageInfos)
+//                .faceImages(faceImageInfos)
+                .faceImages(faceImageInfosForApi)
                 .familyId(family.getId())
                 .zoneId(zone != null ? zone.getId() : null)
                 .zoneName(zone != null ? zone.getName() : null)
