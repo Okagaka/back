@@ -86,7 +86,7 @@ public class Reservation extends BaseTimeEntity {
 
     private int travelTimeSec; // 경로 소요 시간(초 단위)
 
-    private int recalculatedTravelTimeSec; // 카풀 시 재계산한 시간
+//    private int recalculatedTravelTimeSec; // 카풀 시 재계산한 시간
 
 //    private Boolean isRecurring;
 //
