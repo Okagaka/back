@@ -20,7 +20,7 @@ public class EmbeddingApiClient {
     // WebClient.Builder를 주입받아 API 서버의 기본 정보를 설정합니다.
     public EmbeddingApiClient(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder
-                .baseUrl("http://13.124.128.236:8000")
+                .baseUrl("http://43.200.125.174:8000")
                 .build();
     }
 
