@@ -8,13 +8,9 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper; // JSON 파싱을 위해 필요
 
 import javax.xml.stream.Location;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
-import java.util.Collections;
 
 @Service
 public class LocationCacheService {
@@ -67,17 +63,20 @@ public class LocationCacheService {
     }
 
     // 특정 차량의 위치를 Redis에서 가져옴
-    public VehicleLocationDTO getVehicleLocation(Long groupId, Long vehicleId) {
+    public Optional<VehicleLocationDTO> getVehicleLocation(Long groupId, Long vehicleId) {
         String key = String.format(VEHICLE_LOCATION_KEY, groupId, vehicleId);
         String locationJson = redisTemplate.opsForValue().get(key);
         if (locationJson != null) {
             try {
-                return objectMapper.readValue(locationJson, VehicleLocationDTO.class);
+                VehicleLocationDTO dto = objectMapper.readValue(locationJson, VehicleLocationDTO.class);
+                return Optional.of(dto);
+//                return objectMapper.readValue(locationJson, VehicleLocationDTO.class);
             } catch (Exception e) {
                 System.err.println("Failed to parse vehicle location from Redis: " + e.getMessage());
+                return Optional.empty();
             }
         }
-        return null;
+        return Optional.empty();
     }
 
 
@@ -127,17 +126,18 @@ public class LocationCacheService {
     /**
      * 특정 유저의 위치를 Redis에서 가져옴 (String 값으로 저장된 단일 키 조회)
      */
-    public LocationDTO getUserLocation(Long groupId, Long userId) { // groupId 파라미터 추가
+    public Optional<LocationDTO> getUserLocation(Long groupId, Long userId) { // groupId 파라미터 추가
         String key = String.format(LOCATION_KEY, groupId, userId);
         String locationJson = redisTemplate.opsForValue().get(key);
         if (locationJson != null) {
             try {
-                return objectMapper.readValue(locationJson, LocationDTO.class);
+                LocationDTO dto = objectMapper.readValue(locationJson, LocationDTO.class);
+                return Optional.of(dto);
             } catch (Exception e) {
                 System.err.println("Failed to parse single user location from Redis for key " + key + ": " + e.getMessage());
             }
         }
-        return null;
+        return Optional.empty();
     }
 
 //    public LocationDTO getLocation(Long groupId, long userId) {

@@ -44,6 +44,23 @@ public class VehicleLocationService {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new CustomException(ErrorCode.VEHICLE_NOT_FOUND));
 
+        // 상태 변경 시에만 DB도 업데이트
+        Vehicle.VehicleStatus currentDbStatus = vehicle.getStatus();
+        Vehicle.VehicleStatus newStatusFromDto = updateDto.getStatus();
+
+        // 상태가 변경되었는지 확인
+        if (newStatusFromDto != null && !currentDbStatus.equals(newStatusFromDto)) {
+            System.out.println(">>>>> [VehicleLocationService] 상태 변경 감지! DB를 업데이트합니다. "
+                    + currentDbStatus + " -> " + newStatusFromDto);
+
+            // 엔티티의 상태를 새로운 값으로 변경
+            vehicle.setStatus(newStatusFromDto);
+            vehicle.setBatteryLevel(updateDto.getBatteryLevel());
+            vehicle.setSpeed(updateDto.getSpeed());
+            vehicle.setVehicleLongitude(updateDto.getLongitude());
+            vehicle.setVehicleLatitude(updateDto.getLatitude());
+        }
+
         FamilyGroup familyGroup = vehicle.getFamilyGroup();
         if (familyGroup == null) {
             System.out.println(">>>>> [VehicleLocationService] vehicleId " + vehicleId + "는 가족 그룹에 속해있지 않습니다.");
@@ -59,29 +76,30 @@ public class VehicleLocationService {
         // 3. Redis에 최신 위치 정보 저장
         locationCacheService.saveVehicleLocation(groupId, vehicleId, broadcastDto);
 
-        // 4. WebSocket으로 보낼 통합 메시지 생성
+        // 4. WebSocket으로 보낼 통합 메시지 생성 및 전송
         RealTimeUpdate<VehicleLocationDTO> updateMessage = new RealTimeUpdate<>("VEHICLE_UPDATE", broadcastDto);
+        messagingTemplate.convertAndSend("/topic/group/" + groupId + "/location", updateMessage);
 
-        // 5. 그룹에 속한 모든 사용자 조회
-        List<User> usersInGroup = userRepository.findAllByFamilyGroupId(groupId);
-
-        // ✅ [로그 4] 조회된 사용자 수와 ID 목록 확인
-        System.out.println(">>>>> [VehicleLocationService] groupId " + groupId + "에서 " + usersInGroup.size() + "명의 사용자를 찾았습니다.");
-        usersInGroup.forEach(user -> System.out.println("      - Found User ID: " + user.getId()));
-
-        // 6. 조회된 사용자들에게 1:1로 메시지 전송
-        for (User user : usersInGroup) {
-            String username = String.valueOf(user.getId());
-
-            // ✅ [로그 5] 메시지 전송 시도 확인
-//            System.out.println(">>>>> [VehicleLocationService] User ID '" + username + "'에게 메시지 전송 시도...");
-//            messagingTemplate.convertAndSendToUser(
-//                    username,
-//                    "/queue/location",
-//                    updateMessage
-//            );
-            messagingTemplate.convertAndSend("/topic/group/" + groupId + "/location", updateMessage);
-        }
+//        // 5. 그룹에 속한 모든 사용자 조회
+//        List<User> usersInGroup = userRepository.findAllByFamilyGroupId(groupId);
+//
+//        // ✅ [로그 4] 조회된 사용자 수와 ID 목록 확인
+//        System.out.println(">>>>> [VehicleLocationService] groupId " + groupId + "에서 " + usersInGroup.size() + "명의 사용자를 찾았습니다.");
+//        usersInGroup.forEach(user -> System.out.println("      - Found User ID: " + user.getId()));
+//
+//        // 6. 조회된 사용자들에게 1:1로 메시지 전송
+//        for (User user : usersInGroup) {
+//            String username = String.valueOf(user.getId());
+//
+//            // ✅ [로그 5] 메시지 전송 시도 확인
+////            System.out.println(">>>>> [VehicleLocationService] User ID '" + username + "'에게 메시지 전송 시도...");
+////            messagingTemplate.convertAndSendToUser(
+////                    username,
+////                    "/queue/location",
+////                    updateMessage
+////            );
+//            messagingTemplate.convertAndSend("/topic/group/" + groupId + "/location", updateMessage);
+//        }
     }
 
     /**

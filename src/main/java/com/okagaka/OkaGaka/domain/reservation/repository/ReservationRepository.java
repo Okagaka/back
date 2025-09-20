@@ -47,4 +47,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>{
 
     // 예약 상태로 예약 리스트 조회
     List<Reservation> findByStatus(ReservationStatus status);
+
+    // 특정 차량의 특정 시간대에 겹치는 예약 조회 (가족 내 차량은 하나이므로 vehicleId로 조회)
+    @Query("SELECT r FROM Reservation r JOIN r.user u JOIN u.familyGroup fg " +
+            "WHERE fg.vehicle.id = :vehicleId " +
+            "AND r.status IN ('CONFIRMED', 'CARPOOL') " +
+            "AND r.departureDateTime < :endDateTime " +
+            "AND r.arrivalDateTime > :startDateTime")
+    List<Reservation> findOverlappingReservationsForVehicle(
+            @Param("vehicleId") Long vehicleId,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime
+    );
+
 }

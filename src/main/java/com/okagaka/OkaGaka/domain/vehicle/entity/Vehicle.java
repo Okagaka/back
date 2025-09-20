@@ -33,9 +33,15 @@ public class Vehicle extends BaseTimeEntity{
     private VehicleStatus status = VehicleStatus.Idle;
 
     // 나중에 false로 바꾸기(자율주행차 위치 받아오는 로직 짠 뒤에)
-    @Builder.Default
+//    @Builder.Default
+//    @Column
+//    private String location = "none";
+
     @Column
-    private String location = "none";
+    private Double vehicleLatitude;
+
+    @Column
+    private Double vehicleLongitude;
 
     @Builder.Default
     @Column(name = "battery_level", nullable = false)
@@ -57,6 +63,7 @@ public class Vehicle extends BaseTimeEntity{
         Idle, // 대기
         Moving, // 이동
         Charging, // 충전중
+        Arrived, // 도착 완료
         Unavailable // 사용불가
     }
 

@@ -7,30 +7,30 @@ import com.okagaka.OkaGaka.common.external.tmap.dto.TransitResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-@Service
-public class TransitService {
-
-    @Autowired
-    private TmapTransitClient tmapTransitClient;
-
-    public void findRoute() {
-        TransitResponseDTO result = tmapTransitClient.getTransitRoute(
-                "127.02479803562213",
-                "37.504585233865086",
-                "127.03747630119366",
-                "37.479103923078995"
-        );
-
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.enable(SerializationFeature.INDENT_OUTPUT); // 들여쓰기
-            String jsonString = objectMapper.writeValueAsString(result);
-            System.out.println("🚍 전체 TransitResponseDTO 출력:\n" + jsonString);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
+//@Service
+//public class TransitService {
+//
+//    @Autowired
+//    private TmapTransitClient tmapTransitClient;
+//
+//    public void findRoute() {
+//        TransitResponseDTO result = tmapTransitClient.getTransitRoute(
+//                "127.02479803562213",
+//                "37.504585233865086",
+//                "127.03747630119366",
+//                "37.479103923078995"
+//        );
+//
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            objectMapper.enable(SerializationFeature.INDENT_OUTPUT); // 들여쓰기
+//            String jsonString = objectMapper.writeValueAsString(result);
+//            System.out.println("🚍 전체 TransitResponseDTO 출력:\n" + jsonString);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
+//}
 
 //import com.okagaka.OkaGaka.common.external.tmap.TmapTransitClient;
 //import com.okagaka.OkaGaka.common.external.tmap.dto.TransitResponseDTO;

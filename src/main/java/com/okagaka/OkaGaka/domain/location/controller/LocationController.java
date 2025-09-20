@@ -15,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import java.security.Principal;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/groups")
@@ -38,15 +39,15 @@ public class LocationController {
         }
 
         // 2. Redis에서 내 위치 가져오기
-        LocationDTO myLocation = cacheService.getUserLocation(groupId, userId);
+        Optional<LocationDTO> myLocationOptional = cacheService.getUserLocation(groupId, userId);
 
-        // 3,위치가 없으면 빈 응답 또는 에러 처리
-        if (myLocation == null) {
+        // 위치 정보 존재하는지 확인
+        if (myLocationOptional.isPresent()) {
+            LocationDTO myLocation = myLocationOptional.get();
+            return ResponseEntity.ok(ApiResponse.success(myLocation));
+        } else {
             return ResponseEntity.ok(ApiResponse.success(null));
         }
-
-        // 4. 성공 응답
-        return ResponseEntity.ok(ApiResponse.success(myLocation));
     }
 
 
