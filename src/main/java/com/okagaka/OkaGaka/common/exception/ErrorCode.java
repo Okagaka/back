@@ -36,6 +36,8 @@ public enum ErrorCode {
 
     CARREQUEST_NOT_FOUND(HttpStatus.NOT_FOUND,"해당 차량 요청 기록을 찾을 수 없습니다."),
 
+    USER_LOCATION_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자의 실시간 위치 정보를 찾을 수 없습니다."),
+
     DECISION_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 AI 결과를 찾을 수 없습니다."),
 
 
