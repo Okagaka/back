@@ -58,8 +58,8 @@ public class AiDecision extends BaseTimeEntity{
 //    private Integer transitTime;
 
     public enum DecisionResult {
-        Vehicle,
-        Reject,
-        Public_Transport
+        VEHICLE,
+        REJECT,
+        PUBLIC_TRANSPORT
     }
 }
