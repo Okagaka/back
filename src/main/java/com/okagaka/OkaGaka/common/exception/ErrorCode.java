@@ -34,6 +34,10 @@ public enum ErrorCode {
     VEHICLE_NOT_FOUND(HttpStatus.NOT_FOUND,"해당 차량을 찾을 수 없습니다."),
     VEHICLE_ALREADY_EXISTS_IN_GROUP(HttpStatus.CONFLICT, "해당 그룹에는 이미 차량이 등록되어 있습니다."),
 
+    CARREQUEST_NOT_FOUND(HttpStatus.NOT_FOUND,"해당 차량 요청 기록을 찾을 수 없습니다."),
+
+    DECISION_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 AI 결과를 찾을 수 없습니다."),
+
 
 
 

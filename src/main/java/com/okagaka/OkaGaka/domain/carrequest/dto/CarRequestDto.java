@@ -1,14 +1,22 @@
 package com.okagaka.OkaGaka.domain.carrequest.dto;
 
-public record CarRequestDto(
-        String departureCityDo,
-        String departureGuGun,
-        String departureDong,
-        String departureBunji,
+import lombok.Getter;
+import lombok.Setter;
 
-        // 도착지
-        String destinationCityDo,
-        String destinationGuGun,
-        String destinationDong,
-        String destinationBunji
-) { }
+@Getter
+@Setter
+public class CarRequestDto {
+
+    // 요청자 현재 위치
+    private String requesterCityDo;
+    private String requesterGuGun;
+    private String requesterDong;
+    private String requesterBunji;
+
+    // 도착지
+    private String destinationCityDo;
+    private String destinationGuGun;
+    private String destinationDong;
+    private String destinationBunji;
+
+}

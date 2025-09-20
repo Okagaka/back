@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.okagaka.OkaGaka.common.utils.BaseTimeEntity;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "ai_decision")
 @Getter
@@ -33,15 +35,31 @@ public class AiDecision extends BaseTimeEntity{
     @Column(name = "decision_result", length = 30, nullable = false)
     private DecisionResult decisionResult;
 
-    @Lob
+    @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
-    @Column(name = "estimated_time", nullable = false)
-    private Integer estimatedTime;
+    @Column(name = "estimated_pickup_time")
+    private LocalDateTime estimatedPickupTime; // 차량 픽업 예상 시간
+
+    @Column(name = "estimated_destination_time")
+    private LocalDateTime estimatedDestinationTime; // 차량 목적지 도착 예상 시간
+
+    @Column(name = "car_total_time")
+    private Integer carTotalTime;                   // 차량 총 소요 시간 (분)
+
+    @Column(name = "transit_total_time")
+    private Integer transitTotalTime;               // 대중교통 총 소요 시간 (분)
+
+//    // 차량 이용 시 총 시간
+//    @Column(name = "estimated_time", nullable = false)
+//    private Integer estimatedTime;
+
+//    @Column(name = "transit_time")
+//    private Integer transitTime;
 
     public enum DecisionResult {
-        Approve,
+        Vehicle,
         Reject,
-        Suggest_Public_Transport
+        Public_Transport
     }
 }

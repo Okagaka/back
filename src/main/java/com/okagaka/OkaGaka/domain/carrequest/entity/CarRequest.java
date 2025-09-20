@@ -6,9 +6,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.okagaka.OkaGaka.common.utils.BaseTimeEntity;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "car_request")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -23,17 +26,33 @@ public class CarRequest extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
-    private String currentLocation;
+//    @Column(nullable = false)
+//    private String currentLocation;
+
+//    @Column(nullable = false)
+//    private String destination;
 
     @Column(nullable = false)
-    private String destination;
+    private double requesterLongitude;
 
     @Column(nullable = false)
+    private double requesterLatitude;
+
+    @Column(nullable = false)
+    private double destinationLongitude;
+
+    @Column(nullable = false)
+    private double destinationLatitude;
+
+    @Column
     private Integer expectedDuration; // 예상 이용 시간 (분 단위)
 
     @OneToOne(mappedBy = "carRequest", fetch = FetchType.LAZY)
     private AiDecision aiDecision;
+
+    // AI 분석 후 확정된 시간을 저장할 필드 추가
+    private LocalDateTime estimatedPickupTime;
+    private LocalDateTime estimatedDestinationTime;
 
     // 상태 Enum (Requested, Accepted, Rejected, Completed)
     @Enumerated(EnumType.STRING)
@@ -42,5 +61,16 @@ public class CarRequest extends BaseTimeEntity {
 
     public enum CarRequestStatus {
         REQUESTED, ACCEPTED, REJECTED, COMPLETED
+    }
+
+    /**
+     * AI의 승인 결정을 반영하여 요청의 상태와 확정된 시간을 업데이트합니다.
+     * @param pickupTime 확정된 픽업 예상 시간
+     * @param destinationTime 확정된 목적지 도착 예상 시간
+     */
+    public void approve(LocalDateTime pickupTime, LocalDateTime destinationTime) {
+        this.status = CarRequestStatus.ACCEPTED; // Enum에 정의된 ACCEPTED 사용
+        this.estimatedPickupTime = pickupTime;
+        this.estimatedDestinationTime = destinationTime;
     }
 }
