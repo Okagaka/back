@@ -8,10 +8,10 @@ import lombok.Setter;
 public class CarRequestDto {
 
     // 요청자 현재 위치
-    private String requesterCityDo;
-    private String requesterGuGun;
-    private String requesterDong;
-    private String requesterBunji;
+//    private String requesterCityDo;
+//    private String requesterGuGun;
+//    private String requesterDong;
+//    private String requesterBunji;
 
     // 도착지
     private String destinationCityDo;

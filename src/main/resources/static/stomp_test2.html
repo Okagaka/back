@@ -40,7 +40,7 @@
 
 <script>
     let stompClient = null;
-    const WS_URL = 'ws://13.209.57.96:8080/ws-location';
+    const WS_URL = 'ws://localhost:8080/ws-location'; //13.209.57.96
     const TOPIC_PREFIX = '/topic/group/';
     const APP_PREFIX = '/app/location/update';
 
@@ -67,7 +67,7 @@
                 log('✅ Connected: ' + frame);
 
                 // 구독할 그룹 ID를 사용자에게 입력받거나, 테스트용으로 고정
-                const groupId = 27; //7
+                const groupId = 7; //27
                 stompClient.subscribe(TOPIC_PREFIX + groupId, function(message) {
                     // 1. 서버로부터 받은 전체 메시지 객체를 파싱합니다.
                     const receivedMessage = JSON.parse(message.body);

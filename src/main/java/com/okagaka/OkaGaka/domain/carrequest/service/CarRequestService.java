@@ -13,6 +13,8 @@ import com.okagaka.OkaGaka.domain.carrequest.dto.CarRequestDto;
 import com.okagaka.OkaGaka.domain.carrequest.dto.CarRequestResponse;
 import com.okagaka.OkaGaka.domain.carrequest.entity.CarRequest;
 import com.okagaka.OkaGaka.domain.carrequest.repository.CarRequestRepository;
+import com.okagaka.OkaGaka.domain.location.dto.LocationDTO;
+import com.okagaka.OkaGaka.domain.location.service.LocationCacheService;
 import com.okagaka.OkaGaka.domain.user.entity.User;
 import com.okagaka.OkaGaka.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class CarRequestService {
     private final TmapGeocodingClient tmapGeocodingClient;
     private final AiDecisionRepository aiDecisionRepository;
     private final AsyncDecisionService asyncDecisionService;
+    private final LocationCacheService locationCacheService;
 
     @Transactional
     public CarRequestResponse createAndProcessCarRequest(Long userId, CarRequestDto request) {
@@ -38,12 +41,20 @@ public class CarRequestService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // 요청자 위치/ 도착지 좌표 계산
-        Coordinate requesterCoord = tmapGeocodingClient.getCoordinates(
-                request.getRequesterCityDo(),
-                request.getRequesterGuGun(),
-                request.getRequesterDong(),
-                request.getRequesterBunji()
-        );
+//        Coordinate requesterCoord = tmapGeocodingClient.getCoordinates(
+//                request.getRequesterCityDo(),
+//                request.getRequesterGuGun(),
+//                request.getRequesterDong(),
+//                request.getRequesterBunji()
+//        );
+
+
+        // 2. Redis에서 요청자의 실시간 위치 정보 조회
+        Long groupId = user.getFamilyGroup().getId();
+        LocationDTO userLocation = locationCacheService.getUserLocation(groupId, userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_LOCATION_NOT_FOUND));
+
+        System.out.println(">> Redis에서 사용자 위치 조회 완료: Lat=" + userLocation.getLatitude() + ", Lon=" + userLocation.getLongitude());
 
         Coordinate destinationCoord = tmapGeocodingClient.getCoordinates(
                 request.getDestinationCityDo(),
@@ -55,8 +66,8 @@ public class CarRequestService {
         // 1. CarRequest를 "REQUESTED' 상태로 먼저 저장
         CarRequest carRequest = CarRequest.builder()
                 .user(user)
-                .requesterLongitude(Double.parseDouble(requesterCoord.getLon()))
-                .requesterLatitude(Double.parseDouble(requesterCoord.getLat()))
+                .requesterLongitude(userLocation.getLongitude())
+                .requesterLatitude(userLocation.getLatitude())
                 .destinationLongitude(Double.parseDouble(destinationCoord.getLon()))
                 .destinationLatitude(Double.parseDouble(destinationCoord.getLat()))
                 .status(CarRequest.CarRequestStatus.REQUESTED)
