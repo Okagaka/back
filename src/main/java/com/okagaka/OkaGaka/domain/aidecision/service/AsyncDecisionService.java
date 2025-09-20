@@ -73,13 +73,13 @@ public class AsyncDecisionService {
             // 차량 또는 요청자의 위치 정보가 없는 경우 요청 거절
             if (vehicleLocationOptional.isEmpty()) {
                 System.out.println(">> [규칙 거절] 차량의 실시간 위치 정보를 찾을 수 없음 (Redis)");
-                rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "차량의 현재 위치를 확인할 수 없습니다.");
+                rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "차량의 현재 위치를 확인할 수 없습니다.");
                 return;
             }
 
             if (userLocationOptional.isEmpty()) {
                 System.out.println(">> [규칙 거절] 요청자의 실시간 위치 정보를 찾을 수 없음 (Redis)");
-                rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "요청자의 현재 위치를 확인할 수 없습니다.");
+                rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "요청자의 현재 위치를 확인할 수 없습니다.");
                 return;
             }
 
@@ -90,7 +90,7 @@ public class AsyncDecisionService {
             // 규칙 1: Redis의 실시간 차량 상태 확인 -> 나중에 카풀 확인으로 바꿀 거임
             if(realTimeVehicleLocation.getStatus() != Vehicle.VehicleStatus.Idle) {
                 System.out.println(">> [규칙 거절] 차량이 유휴 상태가 아님 (실시간): " + realTimeVehicleLocation.getStatus());
-                rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "차량을 현재 다른 가족 구성원이 이용 중입니다."); // 사실 충전 중일 때도 있음...
+                rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "차량을 현재 다른 가족 구성원이 이용 중입니다."); // 사실 충전 중일 때도 있음...
                 return;
             }
 
@@ -124,7 +124,7 @@ public class AsyncDecisionService {
 
                 // arrivalTimes가 null인 경우 (경로 탐색 실패) 처리
                 if (arrivalTimes == null) {
-                    rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "차량 이동 경로를 찾을 수 없습니다.");
+                    rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "차량 이동 경로를 찾을 수 없습니다.");
                     return;
                 }
             } catch (RuntimeException e) {
@@ -134,7 +134,7 @@ public class AsyncDecisionService {
                 e.printStackTrace(); // 👈 이 코드가 에러의 전체 내용을 콘솔에 출력해 줍니다.
 
                 // TmapClient에서 API 호출 실패시 RuntimeException이 발생하므로 여기서 처리
-                rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "이동 경로를 계산하는 중 오류가 발생했습니다.");
+                rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "이동 경로를 계산하는 중 오류가 발생했습니다.");
                 return;
 
             }
@@ -170,7 +170,7 @@ public class AsyncDecisionService {
 
             if (!overlaps.isEmpty()) {
                 System.out.println(">> [규칙 거절] 기존 예약과 시간 겹침 발생");
-                rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "해당 시간대에 다른 가족의 예약이 이미 존재합니다.");
+                rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "해당 시간대에 다른 가족의 예약이 이미 존재합니다.");
                 return;
             }
 
@@ -198,20 +198,20 @@ public class AsyncDecisionService {
                 carRequest.approve(arrivalTimes.timeAtRequester(), arrivalTimes.timeAtDestination());
 
                 // 2. 모든 분석 결과를 AiDecision에 저장
-                saveDecision(carRequest, AiDecision.DecisionResult.Vehicle, aiResponse.reason(), estimatedStart, arrivalTimes, transitInfo);
+                saveDecision(carRequest, AiDecision.DecisionResult.VEHICLE, aiResponse.reason(), estimatedStart, arrivalTimes, transitInfo);
             } else {
                 // 1. CarRequest 상태를 '거절'로 변경 (대중교통 추천도 일단 거절 상태)
                 carRequest.setStatus(CarRequest.CarRequestStatus.REJECTED);
 
                 // 2. 모든 분석 결과를 AiDecision에 저장
-                saveDecision(carRequest, AiDecision.DecisionResult.Public_Transport, aiResponse.reason(), estimatedStart, arrivalTimes, transitInfo);
+                saveDecision(carRequest, AiDecision.DecisionResult.PUBLIC_TRANSPORT, aiResponse.reason(), estimatedStart, arrivalTimes, transitInfo);
             }
 
 
         } catch (Exception e) {
             // 예외 발생 시 요청 상태를 REJECTED로 변경하는 등 예외 처리
             System.err.println("AI 분석 중 오류 발생: " + e.getMessage());
-            rejectRequest(carRequest, AiDecision.DecisionResult.Reject, "분석 중 시스템 오류가 발생했습니다.");
+            rejectRequest(carRequest, AiDecision.DecisionResult.REJECT, "분석 중 시스템 오류가 발생했습니다.");
         }
     }
 
