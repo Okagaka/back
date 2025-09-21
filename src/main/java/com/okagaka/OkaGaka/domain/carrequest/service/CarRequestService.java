@@ -310,6 +310,7 @@ public class CarRequestService {
             if (!isCarpoolConfirmation && carRequestRepository.existsByUser_FamilyGroupIdAndStatus(user.getFamilyGroup().getId(), CarRequest.CarRequestStatus.CONFIRMED)) {
                 carRequest.setStatus(CarRequest.CarRequestStatus.REJECTED);
                 log.warn("단독 운행 확정 시도 중 다른 실시간 요청이 이미 확정됨. carRequestId: {}", carRequestId);
+                System.out.println("!!");
                 throw new CustomException(ErrorCode.VEHICLE_ALREADY_IN_USE);
             }
             log.info("다른 실시간 요청 겹침 없음.");
