@@ -3,6 +3,7 @@ package com.okagaka.OkaGaka.domain.reservation.controller;
 import com.okagaka.OkaGaka.common.response.ApiResponse;
 import com.okagaka.OkaGaka.common.security.CustomUserDetails;
 import com.okagaka.OkaGaka.domain.reservation.dto.CarpoolProposalResponse;
+import com.okagaka.OkaGaka.domain.reservation.dto.ReservationListResponse;
 import com.okagaka.OkaGaka.domain.reservation.service.ReservationService;
 import com.okagaka.OkaGaka.domain.reservation.dto.ReservationResponse;
 import com.okagaka.OkaGaka.domain.reservation.dto.ReservationRequest;
@@ -80,6 +81,19 @@ public class ReservationController {
         Long userId = userDetails.getUserId();
         List<CarpoolProposalResponse> proposals = reservationService.getReceivedCarpoolProposals(userId);
         return ResponseEntity.ok(ApiResponse.success(proposals));
+    }
+
+    /**
+     * 로그인한 사용자의 예약 목록 조회
+     */
+    @Operation(summary = "내 예약 목록 조회", description = "로그인한 사용자의 모든 예약 정보를 최신순으로 반환합니다.")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ReservationListResponse>>> getUserReservations(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<ReservationListResponse> reservations = reservationService.getUserReservations(userId);
+        return ResponseEntity.ok(ApiResponse.success(reservations));
     }
 
 

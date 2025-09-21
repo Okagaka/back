@@ -18,6 +18,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>{
     // 특정 사용자 ID로 예약 목록 조회
     List<Reservation> findByUserId(Long userId);
 
+
     // 특정 사용자와 예약 상태로 예약 목록 조회
     List<Reservation> findByUserIdAndStatus(Long userId, ReservationStatus status);
 
@@ -70,5 +71,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>{
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
     );
+
+    // 특정 상태 리스트에 속하면서, 특정 시간보다 도착 시간이 이른 모든 예약을 조회하는 메소드
+    List<Reservation> findAllByStatusInAndArrivalDateTimeBefore(List<ReservationStatus> statuses, LocalDateTime dateTime);
 
 }
