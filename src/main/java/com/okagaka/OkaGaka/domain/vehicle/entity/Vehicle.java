@@ -55,7 +55,7 @@ public class Vehicle extends BaseTimeEntity{
     @Column(name = "is_available", nullable = false)
     private Boolean isAvailable = true;
 
-    // ✅ FamilyGroup과의 양방향 1:1 매핑
+    // FamilyGroup과의 양방향 1:1 매핑
     @OneToOne(mappedBy = "vehicle", fetch = FetchType.LAZY)
     private FamilyGroup familyGroup;
 

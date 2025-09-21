@@ -39,6 +39,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>{
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime);
 
+    /**
+     * 특정 차량에 대해 현재 진행 중인 확정된 예약(일반 및 카풀)을 조회합니다.
+     * @param vehicleId 차량 ID
+     * @param now 현재 시간
+     * @return 현재 진행 중인 예약 목록
+     */
+    @Query("SELECT r FROM Reservation r WHERE r.user.familyGroup.vehicle.id = :vehicleId " +
+            "AND r.status IN ('CONFIRMED', 'CARPOOL') " + // ✅ 'CONFIRMED' -> IN ('CONFIRMED', 'CARPOOL')로 수정
+            "AND :now BETWEEN r.departureDateTime AND r.arrivalDateTime")
+    List<Reservation> findCurrentReservationsForVehicle(@Param("vehicleId") Long vehicleId, @Param("now") LocalDateTime now);
+
     // 특정 날짜 범위로 예약 조회
 //    List<Reservation> findByStartDateBetween(LocalDate startDate, LocalDate endDate);
 

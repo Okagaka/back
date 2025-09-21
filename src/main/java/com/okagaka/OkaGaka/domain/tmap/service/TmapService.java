@@ -12,6 +12,8 @@ import com.okagaka.OkaGaka.common.external.tmap.TmapRouteMatrixService;
 import com.okagaka.OkaGaka.common.external.tmap.dto.MatrixRouteInfoDTO;
 import com.okagaka.OkaGaka.common.external.tmap.dto.TmapMultiRouteRequest;
 import com.okagaka.OkaGaka.common.external.tmap.dto.TmapMultiRouteResponse;
+import com.okagaka.OkaGaka.domain.aidecision.service.AsyncDecisionService;
+import com.okagaka.OkaGaka.domain.carrequest.dto.CarpoolPoint;
 import com.okagaka.OkaGaka.domain.reservation.service.CarpoolService;
 import com.okagaka.OkaGaka.domain.reservation.service.CarpoolService.Point;
 import com.okagaka.OkaGaka.domain.tmap.dto.ArrivalTimes;
@@ -343,6 +345,108 @@ public class TmapService {
             }
         } else {
             throw new RuntimeException("TMAP 다중 경유지 경로안내 API 응답이 올바르지 않습니다.");
+        }
+
+        return verifiedTimetable;
+    }
+
+    /**
+     * 카풀 시나리오를 위한 다중 경유지 경로 및 시간표를 조회합니다.
+     * 차량의 현재 위치를 출발점으로 하여, 주어진 경로(path)를 순서대로 경유했을 때의 시간표를 반환합니다.
+     *
+     * @param startCoord 차량의 현재 위치 (API 요청의 출발점)
+     * @param path 최종 확정된 최적 경로 (경유지 목록)
+     * @param startTime 경로 탐색 기준 시간 (차량의 현재 출발 시간)
+     * @return 각 경유지(CarpoolPoint)별 예측 도착 시간이 담긴 Map
+     */
+    public Map<CarpoolPoint, LocalDateTime> getVerifiedCarpoolTimetable(
+            Coordinate startCoord,
+            List<CarpoolPoint> path,
+            LocalDateTime startTime) {
+
+        // 1. 입력값 유효성 검사
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("경유지 목록(path)은 최소 1개 이상의 지점을 포함해야 합니다.");
+        }
+
+        String url = UriComponentsBuilder
+                .fromHttpUrl("https://apis.openapi.sk.com/tmap/routes/routeSequential30")
+                .queryParam("version", "1")
+                .build()
+                .toUriString();
+
+        // 2. 경로 및 시간 데이터 가공 (핵심 변경 부분)
+        // 도착지는 경로의 마지막 지점입니다.
+        CarpoolPoint endPoint = path.get(path.size() - 1);
+        // 경유지 목록은 도착지를 제외한 나머지 경로입니다.
+        List<CarpoolPoint> viaPointsList = path.subList(0, path.size() - 1);
+
+        DateTimeFormatter tmapFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+        String startTimeStr = startTime.format(tmapFormatter);
+
+        // 3. API 요청 본문(Body) 생성
+        Map<String, Object> body = new HashMap<>();
+        // 출발지는 파라미터로 받은 차량의 현재 위치(startCoord)를 사용합니다.
+        body.put("startName", "차량현재위치");
+        body.put("startX", startCoord.getLon());
+        body.put("startY", startCoord.getLat());
+
+        body.put("endName", "최종목적지");
+        body.put("endX", String.valueOf(endPoint.getLon()));
+        body.put("endY", String.valueOf(endPoint.getLat()));
+
+        body.put("startTime", startTimeStr);
+        body.put("searchOption", 0); // 교통 최적 + 추천
+
+        List<Map<String, String>> viaPointsBody = new ArrayList<>();
+        for (int i = 0; i < viaPointsList.size(); i++) {
+            CarpoolPoint p = viaPointsList.get(i);
+            Map<String, String> via = new HashMap<>();
+            via.put("viaPointId", "via" + (i + 1)); // 단순 식별자
+            via.put("viaPointName", p.isPickup() ? "픽업" : "목적지");
+            via.put("viaX", String.valueOf(p.getLon()));
+            via.put("viaY", String.valueOf(p.getLat()));
+            viaPointsBody.add(via);
+        }
+        body.put("viaPoints", viaPointsBody);
+
+        // 4. API 호출 (기존 코드와 동일)
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.set("appKey", appKey); // appKey는 실제 값으로 주입해야 합니다.
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class);
+
+        // 5. API 응답 파싱 및 결과 가공 (핵심 변경 부분)
+        Map<CarpoolPoint, LocalDateTime> verifiedTimetable = new HashMap<>();
+        JsonNode responseBody = response.getBody();
+
+        if (responseBody != null && responseBody.has("features")) {
+            JsonNode features = responseBody.get("features");
+            DateTimeFormatter responseFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+            for (JsonNode feature : features) {
+                JsonNode properties = feature.path("properties");
+                int index = properties.path("index").asInt();
+                String arriveTimeStr = properties.path("arriveTime").asText();
+
+                // API 응답의 index와 우리 path 리스트의 index를 매핑합니다.
+                // index 0: 출발지 (우리 startCoord에 해당, 도착 시간이 없으므로 무시)
+                // index 1: 첫 번째 경유지 (우리 path.get(0)에 해당)
+                // index 2: 두 번째 경유지 (우리 path.get(1)에 해당)
+                // ...
+                // 마지막 index: 최종 목적지 (우리 path.get(path.size() - 1)에 해당)
+                if (index > 0 && (index - 1) < path.size()) {
+                    CarpoolPoint correspondingPoint = path.get(index - 1);
+                    LocalDateTime arrivalTime = LocalDateTime.parse(arriveTimeStr, responseFormatter);
+                    verifiedTimetable.put(correspondingPoint, arrivalTime);
+                }
+            }
+        } else {
+            // TMAP API 호출 실패 또는 응답 형식 오류에 대한 예외 처리
+            throw new RuntimeException("TMAP 다중 경유지 경로안내 API 응답이 올바르지 않거나 호출에 실패했습니다.");
         }
 
         return verifiedTimetable;

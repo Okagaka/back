@@ -40,6 +40,20 @@ public enum ErrorCode {
 
     DECISION_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 AI 결과를 찾을 수 없습니다."),
 
+    VEHICLE_LOCATION_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 차량 위치를 찾을 수 없습니다."),
+
+    FORBIDDEN(HttpStatus.FORBIDDEN, "자신의 요청만 확정할 수 있습니다."),
+
+    INVALID_REQUEST_STATUS(HttpStatus.BAD_REQUEST, "이미 처리되었거나 분석이 완료되지 않은 요청입니다."),
+
+    RESERVATION_CONFLICT(HttpStatus.CONFLICT, "확정하는 사이 다른 가족의 예약이 발생하여 이용할 수 없습니다."),
+
+    VEHICLE_IN_USE(HttpStatus.CONFLICT, "다른 가족 구성원이 이미 차량을 이용 중이거나 요청 중입니다."),
+    DUPLICATE_REQUEST(HttpStatus.CONFLICT, "이미 처리 중인 요청이 있습니다. AI의 분석 결과를 기다려주세요."),
+
+    CARPOOL_NOT_AVAILABLE_ANYMORE(HttpStatus.BAD_REQUEST, "더 이상 유효하지 않은 카풀입니다."),
+    VEHICLE_ALREADY_IN_USE(HttpStatus.CONFLICT, "이미 사용 중인 차량입니다."),
+
 
 
 
