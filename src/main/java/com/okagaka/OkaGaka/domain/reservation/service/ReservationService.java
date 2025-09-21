@@ -1,6 +1,7 @@
 package com.okagaka.OkaGaka.domain.reservation.service;
 
 import com.okagaka.OkaGaka.domain.reservation.dto.CarpoolProposalResponse;
+import com.okagaka.OkaGaka.domain.reservation.dto.ReservationListResponse;
 import com.okagaka.OkaGaka.domain.reservation.enums.ProposalStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -446,6 +447,19 @@ public class ReservationService {
                             .status(p.getStatus())
                             .build();
                 })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 로그인한 사용자의 모든 예약 목록을 조회합니다.
+     * @param userId 로그인한 사용자의 ID
+     * @return 예약 목록 DTO 리스트
+     */
+    public List<ReservationListResponse> getUserReservations(Long userId) {
+        // userId를 기준으로 Reservation 목록을 조회
+        return reservationRepository.findByUserId(userId)
+                .stream()
+                .map(ReservationListResponse::from) // Reservation 엔티티를 ReservationResponse DTO로 변환
                 .collect(Collectors.toList());
     }
 }

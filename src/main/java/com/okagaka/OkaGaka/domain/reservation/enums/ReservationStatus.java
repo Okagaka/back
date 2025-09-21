@@ -14,6 +14,6 @@ public enum ReservationStatus {
     CARPOOL,
 //    REJECTED,
     CANCELLED,
-//    COMPLETED,
+    COMPLETED,
 //    COMPLICT
 }
