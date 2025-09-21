@@ -60,6 +60,7 @@ public class AiDecision extends BaseTimeEntity{
     public enum DecisionResult {
         VEHICLE,
         REJECT,
-        PUBLIC_TRANSPORT
+        PUBLIC_TRANSPORT,
+        CARPOOL //카풀 이용 추천
     }
 }

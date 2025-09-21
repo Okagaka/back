@@ -14,8 +14,8 @@ public class VehicleLocationDTO {
     private Long groupId;
     private Double latitude;
     private Double longitude;
-    private Integer batteryLevel;
-    private Float speed;
+    private Integer batteryLevel = 100;
+    private Float speed = 60.5f;
     private Vehicle.VehicleStatus status;
     private LocalDateTime timestamp;
 

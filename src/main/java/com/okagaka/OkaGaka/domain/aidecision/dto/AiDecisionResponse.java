@@ -1,9 +1,10 @@
 package com.okagaka.OkaGaka.domain.aidecision.dto;
 
 import com.okagaka.OkaGaka.domain.aidecision.entity.AiDecision;
-import com.okagaka.OkaGaka.domain.carrequest.entity.CarRequest;
+import com.okagaka.OkaGaka.domain.carrequest.dto.CarpoolMember;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // AI 분석 완료 후 프론트엔드가 조회할 최종 결과 DTO
 public record AiDecisionResponse(
@@ -13,11 +14,13 @@ public record AiDecisionResponse(
         LocalDateTime pickupTime,
         LocalDateTime destinationTime,
         Integer carTotalTime,
-        Integer transitTotalTime
+        Integer transitTotalTime,
+
+        List<CarpoolMember> carpoolMembers
 
 ) {
 
-    public static AiDecisionResponse from(AiDecision aiDecision) {
+    public static AiDecisionResponse from(AiDecision aiDecision, List<CarpoolMember> carpoolMembers) {
         return new AiDecisionResponse(
                 aiDecision.getCarRequest().getId(),
                 aiDecision.getDecisionResult().name(),
@@ -25,7 +28,8 @@ public record AiDecisionResponse(
                 aiDecision.getEstimatedPickupTime(),      // AiDecision에서 정보 조회
                 aiDecision.getEstimatedDestinationTime(), // AiDecision에서 정보 조회
                 aiDecision.getCarTotalTime(),             // AiDecision에서 정보 조회
-                aiDecision.getTransitTotalTime()          // AiDecision에서 정보 조회
+                aiDecision.getTransitTotalTime(),          // AiDecision에서 정보 조회
+                carpoolMembers
         );
     }
 }
