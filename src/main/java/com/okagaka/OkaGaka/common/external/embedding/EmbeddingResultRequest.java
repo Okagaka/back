@@ -8,6 +8,7 @@ import java.util.List;
 @Getter
 @Builder
 public class EmbeddingResultRequest {
+    private String Id;
     private String vehicleId;
     private String userId;
     private List<String> embeddingUrls;

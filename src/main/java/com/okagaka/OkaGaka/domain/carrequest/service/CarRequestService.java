@@ -315,25 +315,26 @@ public class CarRequestService {
             }
             log.info("다른 실시간 요청 겹침 없음.");
 
-//            // ✅ 새로운 POST 요청 로직 추가
-//            // 사용자 얼굴 이미지의 Embedding URL 조회
-//            List<String> embeddingUrls = userFaceImageRepository.findByUserId(userId).stream()
-//                    .map(UserFaceImage::getEmbeddingImageUrl)
-//                    .collect(Collectors.toList());
-//
-//            // POST 요청을 위한 DTO 생성
-//            EmbeddingResultRequest requestDto = EmbeddingResultRequest.builder()
-//                    .userId(String.valueOf(userId))
-//                    .vehicleId(String.valueOf(vehicle.getId()))
-//                    .embeddingUrls(embeddingUrls)
-//                    .build();
-//
-//            System.out.println(requestDto);
-//
-//
-//            // API 호출
-//            embeddingResultApiClient.sendEmbeddingResult(requestDto);
-//            log.info("Embedding 결과 API 호출 완료. userId: {}, vehicleId: {}", userId, vehicle.getId());
+            // ✅ 새로운 POST 요청 로직 추가
+            // 사용자 얼굴 이미지의 Embedding URL 조회
+            List<String> embeddingUrls = userFaceImageRepository.findByUserId(userId).stream()
+                    .map(UserFaceImage::getEmbeddingImageUrl)
+                    .collect(Collectors.toList());
+
+            // POST 요청을 위한 DTO 생성
+            EmbeddingResultRequest requestDto = EmbeddingResultRequest.builder()
+                    .Id("1")
+                    .userId(String.valueOf(userId))
+                    .vehicleId(String.valueOf(vehicle.getId()))
+                    .embeddingUrls(embeddingUrls)
+                    .build();
+
+            System.out.println(requestDto);
+
+
+            // API 호출
+            embeddingResultApiClient.sendEmbeddingResult(requestDto);
+            log.info("Embedding 결과 API 호출 완료. userId: {}, vehicleId: {}", userId, vehicle.getId());
 
             // 6. 시나리오 분기
             if (isCarpoolConfirmation) {
