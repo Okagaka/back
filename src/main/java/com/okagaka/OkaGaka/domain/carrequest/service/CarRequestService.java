@@ -407,6 +407,41 @@ public class CarRequestService {
             throw e;
         }
     }
+
+    /**
+     * 로그인한 사용자의 모든 차량 요청 목록을 조회합니다.
+     * @param userId 로그인한 사용자의 ID
+     * @return 차량 요청 DTO 리스트 (최신순으로 정렬됨)
+     */
+    @Transactional(readOnly = true)
+    public List<CarRequestListResponse> getUserCarRequests(Long userId) {
+        List<CarRequest> requests = carRequestRepository.findByUser_IdOrderByCreatedAtDesc(userId);
+
+        return requests.stream()
+                .map(carRequest -> {
+                    // ✨ 각 요청에 대해 역 지오코딩 호출
+                    String address = tmapGeocodingClient.getAddress(
+                            carRequest.getDestinationLongitude(),
+                            carRequest.getDestinationLatitude()
+                    );
+
+                    // DTO 빌더 생성
+                    CarRequestListResponse.CarRequestListResponseBuilder builder = CarRequestListResponse.builder()
+                            .carRequestId(carRequest.getId())
+                            .destinationAddress(address) // 변환된 주소 사용
+                            .requestTime(carRequest.getCreatedAt())
+                            .status(carRequest.getStatus());
+
+                    // CONFIRMED 상태일 때 시간 정보 추가
+                    if (carRequest.getStatus() == CarRequest.CarRequestStatus.CONFIRMED) {
+                        builder.estimatedPickupTime(carRequest.getEstimatedPickupTime())
+                                .estimatedDestinationTime(carRequest.getEstimatedDestinationTime());
+                    }
+
+                    return builder.build();
+                })
+                .collect(Collectors.toList());
+    }
 }
 
 //    /**

@@ -37,4 +37,11 @@ public interface CarRequestRepository extends JpaRepository<CarRequest, Long> {
 
     // carpoolGroupId로 모든 관련 요청을 찾는 메서드
     List<CarRequest> findAllByCarpoolGroupId(Long carpoolGroupId);
+
+    /**
+     * 특정 사용자의 모든 차량 요청을 생성 시간(요청 시간)의 내림차순으로 조회합니다.
+     * @param userId 사용자 ID
+     * @return 정렬된 차량 요청 목록
+     */
+    List<CarRequest> findByUser_IdOrderByCreatedAtDesc(Long userId);
 }

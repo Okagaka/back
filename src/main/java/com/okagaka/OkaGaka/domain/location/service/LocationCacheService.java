@@ -55,7 +55,7 @@ public class LocationCacheService {
             String key = String.format(VEHICLE_LOCATION_KEY, groupId, vehicleId);
             String locationJson = objectMapper.writeValueAsString(dto);
             // 차량 정보는 더 자주 업데이트될 수 있으므로 TTL을 적절히 조절 (예: 10분)
-            redisTemplate.opsForValue().set(key, locationJson, 10, TimeUnit.MINUTES); // TTL 10분으로 설정
+            redisTemplate.opsForValue().set(key, locationJson, 40, TimeUnit.MINUTES); // TTL 40분으로 설정
         } catch (Exception e) {
             // 로깅
             System.err.println("Failed to save vehicle location to Redis: " + e.getMessage());
