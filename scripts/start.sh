@@ -25,6 +25,7 @@ export $(cat /home/ubuntu/apps/okagaka-server/.env | xargs)
 
 # DB, AWS, 기타 환경 변수 전달
 nohup java \
+  -Duser.timezone=Asia/Seoul \
   -DRDS_HOST=$RDS_HOST \
   -DRDS_PORT=$RDS_PORT \
   -DRDS_NAME=$RDS_NAME \

@@ -4,6 +4,7 @@ import com.okagaka.OkaGaka.common.response.ApiResponse;
 import com.okagaka.OkaGaka.common.security.CustomUserDetails;
 import com.okagaka.OkaGaka.domain.aidecision.dto.AiDecisionResponse;
 import com.okagaka.OkaGaka.domain.carrequest.dto.CarRequestDto;
+import com.okagaka.OkaGaka.domain.carrequest.dto.CarRequestListResponse;
 import com.okagaka.OkaGaka.domain.carrequest.dto.CarRequestResponse;
 import com.okagaka.OkaGaka.domain.carrequest.dto.ConfirmationRequest;
 import com.okagaka.OkaGaka.domain.carrequest.service.CarRequestService;
@@ -15,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -56,6 +59,16 @@ public class CarRequestController {
                 carRequestId, userDetails.getUserId(), confirmationDto.choice());
         carRequestService.confirmUserChoice(carRequestId, userDetails.getUserId(), confirmationDto);
         return ResponseEntity.ok(ApiResponse.success(null, "결정이 성공적으로 반영되었습니다."));
+    }
+
+    @Operation(summary = "내 차량 요청 목록 조회", description = "로그인한 사용자의 모든 차량 요청 목록을 최신순으로 조회합니다.")
+    @GetMapping("/my-requests")
+    public ResponseEntity<ApiResponse<List<CarRequestListResponse>>> getMyCarRequests(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        List<CarRequestListResponse> response = carRequestService.getUserCarRequests(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
 }

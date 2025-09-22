@@ -40,6 +40,7 @@ public class VehicleService {
 
         // 2. 해당 그룹에 이미 차량이 등록되었는지 확인 (1그룹 1차량 정책)
         if (familyGroup.getVehicle() != null) {
+            System.out.println(familyGroup.getVehicle());
             throw new CustomException(ErrorCode.VEHICLE_ALREADY_EXISTS_IN_GROUP);
         }
 

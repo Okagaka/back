@@ -67,7 +67,7 @@ public class CarRequest extends BaseTimeEntity {
         ANALYSIS_COMPLETE,  // AI 분석 완료 (사용자 확인 대기)
         CONFIRMED,          // 사용자가 차량 이용을 최종 확정함
         REJECTED,           // 규칙 기반 또는 시스템 오류로 거절됨
-        CANCELLED   ,        // 사용자가 대중교통을 선택하거나 요청을 취소함
+        CANCELLED   ,       // 사용자가 대중교통을 선택하거나 요청을 취소함
         COMPLETED
     }
 

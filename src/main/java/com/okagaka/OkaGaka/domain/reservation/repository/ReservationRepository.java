@@ -75,4 +75,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>{
     // 특정 상태 리스트에 속하면서, 특정 시간보다 도착 시간이 이른 모든 예약을 조회하는 메소드
     List<Reservation> findAllByStatusInAndArrivalDateTimeBefore(List<ReservationStatus> statuses, LocalDateTime dateTime);
 
+    List<Reservation> findByUserIdOrderByDepartureDateTimeDesc(Long userId);
+
 }

@@ -374,17 +374,17 @@ public class AsyncDecisionService {
             User user = carRequest.getUser();
             Vehicle vehicle = user.getFamilyGroup().getVehicle();
 
-            // 1. 대중교통 정보 조회 (API 제한으로 임시 비활성화)
-            System.out.println(">> [임시] 대중교통 API 호출을 건너뜁니다.");
-            TransitInfo transitInfo = null; // API 호출 대신 null을 할당
+//            // 1. 대중교통 정보 조회 (API 제한으로 임시 비활성화)
+//            System.out.println(">> [임시] 대중교통 API 호출을 건너뜁니다.");
+//            TransitInfo transitInfo = null; // API 호출 대신 null을 할당
 
-//            // 1. 대중교통 정보 조회
-//            TransitInfo transitInfo = transitService.getTransitInfo(
-//                    String.valueOf(carRequest.getRequesterLongitude()),
-//                    String.valueOf(carRequest.getRequesterLatitude()),
-//                    String.valueOf(carRequest.getDestinationLongitude()),
-//                    String.valueOf(carRequest.getDestinationLatitude())
-//            );
+            // 1. 대중교통 정보 조회
+            TransitInfo transitInfo = transitService.getTransitInfo(
+                    String.valueOf(carRequest.getRequesterLongitude()),
+                    String.valueOf(carRequest.getRequesterLatitude()),
+                    String.valueOf(carRequest.getDestinationLongitude()),
+                    String.valueOf(carRequest.getDestinationLatitude())
+            );
 
             if (transitInfo == null) {
                 System.out.println(">> 조회된 대중교통 경로가 없습니다.");

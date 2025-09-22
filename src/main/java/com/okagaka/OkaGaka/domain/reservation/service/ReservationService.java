@@ -453,13 +453,38 @@ public class ReservationService {
     /**
      * 로그인한 사용자의 모든 예약 목록을 조회합니다.
      * @param userId 로그인한 사용자의 ID
-     * @return 예약 목록 DTO 리스트
+     * @return 주소 정보가 포함된 예약 목록 DTO 리스트
      */
     public List<ReservationListResponse> getUserReservations(Long userId) {
-        // userId를 기준으로 Reservation 목록을 조회
-        return reservationRepository.findByUserId(userId)
-                .stream()
-                .map(ReservationListResponse::from) // Reservation 엔티티를 ReservationResponse DTO로 변환
+        // 1. DB에서 최신순으로 정렬된 예약 목록을 가져옵니다.
+        List<Reservation> reservations = reservationRepository.findByUserIdOrderByDepartureDateTimeDesc(userId);
+
+        // 2. Stream을 사용하여 각 Reservation 엔티티를 ReservationListResponse DTO로 변환합니다.
+        return reservations.stream()
+                .map(reservation -> {
+                    // 3. 출발지 좌표를 주소로 변환합니다.
+                    String departureAddr = tmapGeocodingClient.getAddress(
+                            reservation.getDepartureLongitude(),
+                            reservation.getDepartureLatitude()
+                    );
+
+                    // 4. 목적지 좌표를 주소로 변환합니다.
+                    String destinationAddr = tmapGeocodingClient.getAddress(
+                            reservation.getDestinationLongitude(),
+                            reservation.getDestinationLatitude()
+                    );
+
+                    // 5. 변환된 주소를 포함하여 DTO를 생성하고 반환합니다.
+                    return ReservationListResponse.builder()
+                            .reservationId(reservation.getId())
+                            .title(reservation.getTitle())
+                            .departureAddress(departureAddr) // 변환된 출발지 주소 설정
+                            .destinationAddress(destinationAddr) // 변환된 목적지 주소 설정
+                            .status(reservation.getStatus())
+                            .departureDateTime(reservation.getDepartureDateTime())
+                            .arrivalDateTime(reservation.getArrivalDateTime())
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 }
