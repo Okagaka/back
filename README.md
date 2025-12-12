@@ -35,7 +35,7 @@ OkaGaka는 가족 구성원들의 이동 수요를 분석하여 최적의 카풀
 * **Weather**: OpenWeatherMap API
 
 ## 🏛️ System Architecture
-<img width="900" alt="오카가카 (3)" src="https://github.com/user-attachments/assets/ccfde780-94be-46f7-a736-297c57c152bf" />
+<img width="600" alt="Architecture" src="https://github.com/user-attachments/assets/ccfde780-94be-46f7-a736-297c57c152bf" />
 
 ## 🚀 Getting Started
 
